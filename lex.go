@@ -45,14 +45,16 @@ const (
 	itemHostName
 	itemUser
 	itemPort
+	itemProxyCommand
 )
 
-// PKGBUILD variables
+// variables
 var variables = map[string]itemType{
-	"host":     itemHost,
-	"hostname": itemHostName,
-	"user":     itemUser,
-	"port":     itemPort,
+	"host":         itemHost,
+	"hostname":     itemHostName,
+	"user":         itemUser,
+	"port":         itemPort,
+	"proxycommand": itemProxyCommand,
 }
 
 const eof = -1

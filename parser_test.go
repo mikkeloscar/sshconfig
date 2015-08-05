@@ -8,6 +8,7 @@ func TestParsing(t *testing.T) {
   HostName google.se
   User goog
   Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
 
 Host face
   HostName facebook.com
