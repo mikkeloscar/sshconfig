@@ -144,12 +144,26 @@ func lexEnv(l *lexer) stateFn {
 		return nil
 	case isAlphaNumeric(r):
 		return lexVariable
-	case r == '#' || r == '\t' || r == ' ' || r == '\n':
+	case r == '#':
+		return lexComment
+	case r == '\t' || r == ' ' || r == '\n':
 		l.ignore()
 		return lexEnv
 	default:
 		l.errorf("unable to parse character: %c", r)
 		return nil
+	}
+}
+
+func lexComment(l *lexer) stateFn {
+	for {
+		switch l.next() {
+		case '\n':
+			l.ignore()
+			return lexEnv
+		default:
+			l.ignore()
+		}
 	}
 }
 
