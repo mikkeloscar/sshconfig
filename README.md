@@ -2,9 +2,9 @@
 
 # OpenSSH config parser for golang
 
-Parses the config usually found in `~/.ssh/config` or
-`/etc/ssh/ssh_config`. Only `Host`, `HostName`, `User` and `Port` is
-implemented at this point.
+Parses the config usually found in `~/.ssh/config` or `/etc/ssh/ssh_config`.
+Only `Host`, `HostName`, `User`, `Port` and `ProxyCommand` is implemented at
+this point.
 
 [OpenSSH Reference.][openssh_man]
 
