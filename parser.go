@@ -8,11 +8,12 @@ import (
 
 // SSHHost defines a single host entry in a ssh config
 type SSHHost struct {
-	Host         []string
-	HostName     string
-	User         string
-	Port         int
-	ProxyCommand string
+	Host              []string
+	HostName          string
+	User              string
+	Port              int
+	ProxyCommand      string
+	HostKeyAlgorithms string
 }
 
 // MustParseSSHConfig must parse the SSH config given by path or it will panic
@@ -87,7 +88,12 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.ProxyCommand = next.val
-
+		case itemHostKeyAlgorithms:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.HostKeyAlgorithms = next.val
 		case itemError:
 			return nil, fmt.Errorf(token.val)
 		case itemEOF:
