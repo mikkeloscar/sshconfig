@@ -47,6 +47,7 @@ const (
 	itemPort
 	itemProxyCommand
 	itemHostKeyAlgorithms
+	itemIdentityFile
 )
 
 // variables
@@ -57,6 +58,7 @@ var variables = map[string]itemType{
 	"port":              itemPort,
 	"proxycommand":      itemProxyCommand,
 	"hostkeyalgorithms": itemHostKeyAlgorithms,
+	"identityfile":      itemIdentityFile,
 }
 
 const eof = -1

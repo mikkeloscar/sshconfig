@@ -14,6 +14,7 @@ type SSHHost struct {
 	Port              int
 	ProxyCommand      string
 	HostKeyAlgorithms string
+	IdentityFile      string
 }
 
 // MustParseSSHConfig must parse the SSH config given by path or it will panic
@@ -94,6 +95,12 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.HostKeyAlgorithms = next.val
+		case itemIdentityFile:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.IdentityFile = next.val
 		case itemError:
 			return nil, fmt.Errorf(token.val)
 		case itemEOF:

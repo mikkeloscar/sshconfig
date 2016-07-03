@@ -11,6 +11,7 @@ func TestParsing(t *testing.T) {
   ProxyCommand ssh -q pluto nc saturn 22
   HostKeyAlgorithms ssh-dss
   # comment
+  IdentityFile ~/.ssh/company
 
 Host face
   HostName facebook.com
