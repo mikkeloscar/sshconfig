@@ -49,7 +49,7 @@ Loop:
 		token := lexer.nextItem()
 
 		if sshHost == nil && token.typ != itemHost {
-			return nil, fmt.Errorf("config variale before Host variable")
+			return nil, fmt.Errorf("config variable before Host variable")
 		}
 
 		switch token.typ {
