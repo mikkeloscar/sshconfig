@@ -62,7 +62,6 @@ Loop:
 			sshHost = &SSHHost{Host: []string{}, Port: 22}
 		case itemHostValue:
 			sshHost.Host = strings.Split(token.val, " ")
-
 		case itemHostName:
 			next = lexer.nextItem()
 			if next.typ != itemValue {

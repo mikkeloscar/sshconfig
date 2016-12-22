@@ -8,7 +8,6 @@ package sshconfig
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -190,7 +189,6 @@ func lexVariable(l *lexer) stateFn {
 				}
 				return lexValue
 			}
-			fmt.Fprintf(os.Stderr, "ignoring variable: %s\n", variable)
 			return lexValue
 		default:
 			pattern := l.input[l.start:l.pos]
