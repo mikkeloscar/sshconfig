@@ -8,6 +8,7 @@ package sshconfig
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -189,7 +190,8 @@ func lexVariable(l *lexer) stateFn {
 				}
 				return lexValue
 			}
-			return l.errorf("invalid variable: %s", variable)
+			fmt.Fprintf(os.Stderr, "ignoring variable: %s\n", variable)
+			return lexValue
 		default:
 			pattern := l.input[l.start:l.pos]
 			return l.errorf("invalid pattern: %s", pattern)
@@ -201,6 +203,13 @@ func lexHostValue(l *lexer) stateFn {
 	for {
 		switch l.next() {
 		case ' ':
+			switch l.peek() {
+			case '\n', eof:
+				break
+			default:
+				// more coming, wait
+				continue
+			}
 			l.backup()
 			l.emit(itemValue)
 		case '\n':
