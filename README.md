@@ -38,7 +38,7 @@ func main() {
 
 ## LICENSE
 
-Copyright (C) 2015  Mikkel Oscar Lyderik Larsen
+Copyright (C) 2016  Mikkel Oscar Lyderik Larsen & Contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
