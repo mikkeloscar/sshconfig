@@ -1,6 +1,9 @@
-[![GoDoc](https://godoc.org/github.com/mikkeloscar/sshconfig?status.svg)](https://godoc.org/github.com/mikkeloscar/sshconfig)
-
 # OpenSSH config parser for golang
+
+[![Build Status](https://travis-ci.org/mikkeloscar/sshconfig.svg?branch=master)](https://travis-ci.org/mikkeloscar/sshconfig)
+[![GoDoc](https://godoc.org/github.com/mikkeloscar/sshconfig?status.svg)](https://godoc.org/github.com/mikkeloscar/sshconfig)
+[![Go Report Card](https://goreportcard.com/badge/github.com/mikkeloscar/sshconfig)](https://goreportcard.com/report/github.com/mikkeloscar/sshconfig)
+[![Coverage Status](https://coveralls.io/repos/github/mikkeloscar/sshconfig/badge.svg)](https://coveralls.io/github/mikkeloscar/sshconfig)
 
 Parses the config usually found in `~/.ssh/config` or `/etc/ssh/ssh_config`.
 Only `Host`, `HostName`, `User`, `Port` and `ProxyCommand` is implemented at
