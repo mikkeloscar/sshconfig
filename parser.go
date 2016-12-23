@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strconv"
+	"strings"
 )
 
 // SSHHost defines a single host entry in a ssh config
@@ -60,7 +61,7 @@ Loop:
 
 			sshHost = &SSHHost{Host: []string{}, Port: 22}
 		case itemHostValue:
-			sshHost.Host = append(sshHost.Host, token.val)
+			sshHost.Host = strings.Split(token.val, " ")
 		case itemHostName:
 			next = lexer.nextItem()
 			if next.typ != itemValue {
@@ -109,7 +110,7 @@ Loop:
 			}
 			break Loop
 		default:
-			return nil, fmt.Errorf(token.val)
+			// continue onwards
 		}
 	}
 	return sshConfigs, nil
