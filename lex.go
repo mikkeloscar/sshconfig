@@ -208,7 +208,6 @@ func lexHostValue(l *lexer) stateFn {
 				// more coming, wait
 				continue
 			}
-			l.backup()
 			l.emit(itemValue)
 		case '\n':
 			l.backup()

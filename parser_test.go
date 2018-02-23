@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
+	"time"
 )
 
 // Test parsing
@@ -44,6 +45,28 @@ func TestMultipleHost(t *testing.T) {
 	h := hosts[0]
 	if ok := reflect.DeepEqual([]string{"google", "google2", "aws"}, h.Host); !ok {
 		t.Error("unexpected host mismatch")
+	}
+
+}
+
+// TestTrailingSpace ensures the parser does not hang when attempting to parse
+// a Host declaration with a trailing space after a pattern
+func TestTrailingSpace(t *testing.T) {
+	// in the config below, the first line is "Host google \n"
+	config := `
+Host googlespace 
+    HostName google.com
+`
+	sig := make(chan struct{})
+	go func() {
+		parse(config)
+		close(sig)
+	}()
+
+	select {
+	case <-sig:
+	case <-time.After(time.Millisecond * 50):
+		t.Error("timed out parsing")
 	}
 }
 
