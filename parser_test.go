@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
-	"time"
 )
 
 // Test parsing
@@ -57,17 +56,7 @@ func TestTrailingSpace(t *testing.T) {
 Host googlespace 
     HostName google.com
 `
-	sig := make(chan struct{})
-	go func() {
-		parse(config)
-		close(sig)
-	}()
-
-	select {
-	case <-sig:
-	case <-time.After(time.Millisecond * 50):
-		t.Error("timed out parsing")
-	}
+	parse(config)
 }
 
 func TestIgnoreKeyword(t *testing.T) {
