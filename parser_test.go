@@ -45,6 +45,18 @@ func TestMultipleHost(t *testing.T) {
 	if ok := reflect.DeepEqual([]string{"google", "google2", "aws"}, h.Host); !ok {
 		t.Error("unexpected host mismatch")
 	}
+
+}
+
+// TestTrailingSpace ensures the parser does not hang when attempting to parse
+// a Host declaration with a trailing space after a pattern
+func TestTrailingSpace(t *testing.T) {
+	// in the config below, the first line is "Host google \n"
+	config := `
+Host googlespace 
+    HostName google.com
+`
+	parse(config)
 }
 
 func TestIgnoreKeyword(t *testing.T) {
