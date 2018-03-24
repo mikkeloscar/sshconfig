@@ -150,6 +150,14 @@ func lexEnv(l *lexer) stateFn {
 		return lexVariable
 	case r == '#':
 		return lexComment
+	case r == '\r':
+		l.ignore()
+		if l.next() != '\n' {
+			l.errorf("expected \\n")
+			return nil
+		}
+		l.ignore()
+		return lexEnv
 	case r == '\t' || r == ' ' || r == '\n':
 		l.ignore()
 		return lexEnv
@@ -162,6 +170,14 @@ func lexEnv(l *lexer) stateFn {
 func lexComment(l *lexer) stateFn {
 	for {
 		switch l.next() {
+		case '\r':
+			l.ignore()
+			if l.next() != '\n' {
+				l.errorf("expected \\n")
+				return nil
+			}
+			l.ignore()
+			return lexEnv
 		case '\n':
 			l.ignore()
 			return lexEnv
@@ -192,7 +208,7 @@ func lexVariable(l *lexer) stateFn {
 			return lexValue
 		default:
 			pattern := l.input[l.start:l.pos]
-			return l.errorf("invalid pattern: %s", pattern)
+			return l.errorf("invalid pattern: %#v", pattern)
 		}
 	}
 }
@@ -202,6 +218,11 @@ func lexHostValue(l *lexer) stateFn {
 		switch l.next() {
 		case ' ':
 			switch l.peek() {
+			case '\r':
+				if l.peek() != '\n' {
+					return l.errorf("expected \\n")
+				}
+				fallthrough
 			case '\n', eof:
 				break
 			default:
@@ -209,6 +230,11 @@ func lexHostValue(l *lexer) stateFn {
 				continue
 			}
 			l.emit(itemValue)
+		case '\r':
+			if l.peek() != '\n' {
+				return l.errorf("expected \\n")
+			}
+			fallthrough
 		case '\n':
 			l.backup()
 			l.emit(itemHostValue)
@@ -226,6 +252,11 @@ func lexHostValue(l *lexer) stateFn {
 func lexValue(l *lexer) stateFn {
 	for {
 		switch l.next() {
+		case '\r':
+			if l.peek() != '\n' {
+				return l.errorf("expected \\n")
+			}
+			fallthrough
 		case '\n':
 			l.backup()
 			l.emit(itemValue)

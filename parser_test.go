@@ -3,6 +3,7 @@ package sshconfig
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -23,6 +24,26 @@ Host face
   Port 22`
 
 	_, err := parse(config)
+
+	if err != nil {
+		t.Errorf("unable to parse config: %s", err.Error())
+	}
+
+	configCR := strings.Replace(`Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityFile ~/.ssh/company
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22`, "\n", "\r\n", -1)
+
+	_, err = parse(configCR)
 
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
