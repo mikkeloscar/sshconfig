@@ -178,7 +178,7 @@ func lexComment(l *lexer) stateFn {
 			}
 			l.ignore()
 			return lexEnv
-		case '\n':
+		case '\n', eof:
 			l.ignore()
 			return lexEnv
 		default:
