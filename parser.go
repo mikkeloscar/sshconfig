@@ -67,19 +67,19 @@ Loop:
 			if next.typ != itemValue {
 				return nil, fmt.Errorf(next.val)
 			}
-			sshHost.HostName = next.val
+			sshHost.HostName = strings.TrimSpace(next.val)
 		case itemUser:
 			next = lexer.nextItem()
 			if next.typ != itemValue {
 				return nil, fmt.Errorf(next.val)
 			}
-			sshHost.User = next.val
+			sshHost.User = strings.TrimSpace(next.val)
 		case itemPort:
 			next = lexer.nextItem()
 			if next.typ != itemValue {
 				return nil, fmt.Errorf(next.val)
 			}
-			port, err := strconv.Atoi(next.val)
+			port, err := strconv.Atoi(strings.TrimSpace(next.val))
 			if err != nil {
 				return nil, err
 			}
