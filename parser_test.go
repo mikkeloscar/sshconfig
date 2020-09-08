@@ -132,6 +132,207 @@ Host face
 	compare(t, expected, actual)
 }
 
+func TestLocalForward(t *testing.T) {
+	config := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityOnly yes
+  IdentityFile ~/.ssh/company
+  RemoteForward 1337 duckduckgo.com:443
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  RemoteForward 2222 totalylegitserver:22
+  RemoteForward 0.0.0.0:666 instagram.com:1234`
+
+	expected := []*SSHHost{
+		{
+			Host:              []string{"google"},
+			HostName:          "google.se",
+			User:              "goog",
+			Port:              2222,
+			HostKeyAlgorithms: "ssh-dss",
+			ProxyCommand:      "ssh -q pluto nc saturn 22",
+			IdentityFile:      "~/.ssh/company",
+			RemoteForwards: []Forward{
+				Forward{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+		},
+		{
+			Host:              []string{"face"},
+			User:              "mark",
+			Port:              22,
+			HostName:          "facebook.com",
+			HostKeyAlgorithms: "",
+			ProxyCommand:      "",
+			IdentityFile:      "",
+			RemoteForwards: []Forward{
+				Forward{
+					InHost:  "",
+					InPort:  2222,
+					OutHost: "totalylegitserver",
+					OutPort: 22,
+				},
+				Forward{
+					InHost:  "0.0.0.0",
+					InPort:  666,
+					OutHost: "instagram.com",
+					OutPort: 1234,
+				},
+			},
+		},
+	}
+	actual, err := parse(config)
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestRemoteForward(t *testing.T) {
+	config := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityOnly yes
+  IdentityFile ~/.ssh/company
+  LocalForward 1337 duckduckgo.com:443
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  LocalForward 2222 totalylegitserver:22
+  LocalForward 0.0.0.0:666 instagram.com:1234`
+
+	expected := []*SSHHost{
+		{
+			Host:              []string{"google"},
+			HostName:          "google.se",
+			User:              "goog",
+			Port:              2222,
+			HostKeyAlgorithms: "ssh-dss",
+			ProxyCommand:      "ssh -q pluto nc saturn 22",
+			IdentityFile:      "~/.ssh/company",
+			LocalForwards: []Forward{
+				Forward{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+		},
+		{
+			Host:              []string{"face"},
+			User:              "mark",
+			Port:              22,
+			HostName:          "facebook.com",
+			HostKeyAlgorithms: "",
+			ProxyCommand:      "",
+			IdentityFile:      "",
+			LocalForwards: []Forward{
+				Forward{
+					InHost:  "",
+					InPort:  2222,
+					OutHost: "totalylegitserver",
+					OutPort: 22,
+				},
+				Forward{
+					InHost:  "0.0.0.0",
+					InPort:  666,
+					OutHost: "instagram.com",
+					OutPort: 1234,
+				},
+			},
+		},
+	}
+	actual, err := parse(config)
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestDynamicForward(t *testing.T) {
+	config := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityOnly yes
+  IdentityFile ~/.ssh/company
+  DynamicForward 8080
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  DynamicForward 8080
+  DynamicForward 0.0.0.0:8443`
+
+	expected := []*SSHHost{
+		{
+			Host:              []string{"google"},
+			HostName:          "google.se",
+			User:              "goog",
+			Port:              2222,
+			HostKeyAlgorithms: "ssh-dss",
+			ProxyCommand:      "ssh -q pluto nc saturn 22",
+			IdentityFile:      "~/.ssh/company",
+			DynamicForwards: []DForward{
+				DForward{
+					Host: "",
+					Port: 8080,
+				},
+			},
+		},
+		{
+			Host:              []string{"face"},
+			User:              "mark",
+			Port:              22,
+			HostName:          "facebook.com",
+			HostKeyAlgorithms: "",
+			ProxyCommand:      "",
+			IdentityFile:      "",
+			DynamicForwards: []DForward{
+				DForward{
+					Host: "",
+					Port: 8080,
+				},
+				DForward{
+					Host: "0.0.0.0",
+					Port: 8443,
+				},
+			},
+		},
+	}
+	actual, err := parse(config)
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
 func compare(t *testing.T, expected, actual []*SSHHost) {
 	for i, ac := range actual {
 		exMap := toMap(t, expected[i])
