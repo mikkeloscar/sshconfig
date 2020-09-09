@@ -19,7 +19,7 @@ type SSHHost struct {
 	IdentityFile      string
 	LocalForwards     []Forward
 	RemoteForwards    []Forward
-	DynamicForwards   []DForward
+	DynamicForwards   []DynamicForward
 }
 
 // Forward defines a single port forward entry
@@ -53,23 +53,23 @@ func NewForward(f string) (Forward, error) {
 	}, nil
 }
 
-// DForward defines a single dynamic port forward entry
-type DForward struct {
+// DynamicForward defines a single dynamic port forward entry
+type DynamicForward struct {
 	Host string
 	Port int
 }
 
-// NewDForward returns DForward object parsed from DynamicForward string
-func NewDForward(f string) (DForward, error) {
+// NewDynamicForward returns DForward object parsed from DynamicForward string
+func NewDynamicForward(f string) (DynamicForward, error) {
 	r := regexp.MustCompile(`((\S+):)?(\d+)`)
 	m := r.FindStringSubmatch(f)
 
 	InPort, err := strconv.Atoi(m[3])
 	if err != nil {
-		return DForward{}, err
+		return DynamicForward{}, err
 	}
 
-	return DForward{
+	return DynamicForward{
 		Host: m[2],
 		Port: InPort,
 	}, nil
@@ -184,7 +184,7 @@ Loop:
 			if next.typ != itemValue {
 				return nil, fmt.Errorf(next.val)
 			}
-			f, err := NewDForward(next.val)
+			f, err := NewDynamicForward(next.val)
 			if err != nil {
 				return nil, err
 			}

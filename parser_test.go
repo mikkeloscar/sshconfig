@@ -132,7 +132,7 @@ Host face
 	compare(t, expected, actual)
 }
 
-func TestLocalForward(t *testing.T) {
+func TestRemoteForward(t *testing.T) {
 	config := `Host google
   HostName google.se
   User goog
@@ -201,7 +201,7 @@ Host face
 	compare(t, expected, actual)
 }
 
-func TestRemoteForward(t *testing.T) {
+func TestLocalForward(t *testing.T) {
 	config := `Host google
   HostName google.se
   User goog
@@ -298,7 +298,7 @@ Host face
 			HostKeyAlgorithms: "ssh-dss",
 			ProxyCommand:      "ssh -q pluto nc saturn 22",
 			IdentityFile:      "~/.ssh/company",
-			DynamicForwards: []DForward{
+			DynamicForwards: []DynamicForward{
 				{
 					Host: "",
 					Port: 8080,
@@ -313,7 +313,7 @@ Host face
 			HostKeyAlgorithms: "",
 			ProxyCommand:      "",
 			IdentityFile:      "",
-			DynamicForwards: []DForward{
+			DynamicForwards: []DynamicForward{
 				{
 					Host: "",
 					Port: 8080,
