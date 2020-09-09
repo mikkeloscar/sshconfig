@@ -161,7 +161,7 @@ Host face
 			ProxyCommand:      "ssh -q pluto nc saturn 22",
 			IdentityFile:      "~/.ssh/company",
 			RemoteForwards: []Forward{
-				Forward{
+				{
 					InHost:  "",
 					InPort:  1337,
 					OutHost: "duckduckgo.com",
@@ -178,13 +178,13 @@ Host face
 			ProxyCommand:      "",
 			IdentityFile:      "",
 			RemoteForwards: []Forward{
-				Forward{
+				{
 					InHost:  "",
 					InPort:  2222,
 					OutHost: "totalylegitserver",
 					OutPort: 22,
 				},
-				Forward{
+				{
 					InHost:  "0.0.0.0",
 					InPort:  666,
 					OutHost: "instagram.com",
@@ -230,7 +230,7 @@ Host face
 			ProxyCommand:      "ssh -q pluto nc saturn 22",
 			IdentityFile:      "~/.ssh/company",
 			LocalForwards: []Forward{
-				Forward{
+				{
 					InHost:  "",
 					InPort:  1337,
 					OutHost: "duckduckgo.com",
@@ -247,13 +247,13 @@ Host face
 			ProxyCommand:      "",
 			IdentityFile:      "",
 			LocalForwards: []Forward{
-				Forward{
+				{
 					InHost:  "",
 					InPort:  2222,
 					OutHost: "totalylegitserver",
 					OutPort: 22,
 				},
-				Forward{
+				{
 					InHost:  "0.0.0.0",
 					InPort:  666,
 					OutHost: "instagram.com",
@@ -299,7 +299,7 @@ Host face
 			ProxyCommand:      "ssh -q pluto nc saturn 22",
 			IdentityFile:      "~/.ssh/company",
 			DynamicForwards: []DForward{
-				DForward{
+				{
 					Host: "",
 					Port: 8080,
 				},
@@ -314,11 +314,11 @@ Host face
 			ProxyCommand:      "",
 			IdentityFile:      "",
 			DynamicForwards: []DForward{
-				DForward{
+				{
 					Host: "",
 					Port: 8080,
 				},
-				DForward{
+				{
 					Host: "0.0.0.0",
 					Port: 8443,
 				},
