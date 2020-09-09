@@ -132,75 +132,6 @@ Host face
 	compare(t, expected, actual)
 }
 
-func TestRemoteForward(t *testing.T) {
-	config := `Host google
-  HostName google.se
-  User goog
-  Port 2222
-  ProxyCommand ssh -q pluto nc saturn 22
-  HostKeyAlgorithms ssh-dss
-  # comment
-  IdentityOnly yes
-  IdentityFile ~/.ssh/company
-  RemoteForward 1337 duckduckgo.com:443
-
-Host face
-  HostName facebook.com
-  User mark
-  Port 22
-  RemoteForward 2222 totalylegitserver:22
-  RemoteForward 0.0.0.0:666 instagram.com:1234`
-
-	expected := []*SSHHost{
-		{
-			Host:              []string{"google"},
-			HostName:          "google.se",
-			User:              "goog",
-			Port:              2222,
-			HostKeyAlgorithms: "ssh-dss",
-			ProxyCommand:      "ssh -q pluto nc saturn 22",
-			IdentityFile:      "~/.ssh/company",
-			RemoteForwards: []Forward{
-				{
-					InHost:  "",
-					InPort:  1337,
-					OutHost: "duckduckgo.com",
-					OutPort: 443,
-				},
-			},
-		},
-		{
-			Host:              []string{"face"},
-			User:              "mark",
-			Port:              22,
-			HostName:          "facebook.com",
-			HostKeyAlgorithms: "",
-			ProxyCommand:      "",
-			IdentityFile:      "",
-			RemoteForwards: []Forward{
-				{
-					InHost:  "",
-					InPort:  2222,
-					OutHost: "totalylegitserver",
-					OutPort: 22,
-				},
-				{
-					InHost:  "0.0.0.0",
-					InPort:  666,
-					OutHost: "instagram.com",
-					OutPort: 1234,
-				},
-			},
-		},
-	}
-	actual, err := parse(config)
-	if err != nil {
-		t.Errorf("unexpected error parsing config: %s", err.Error())
-	}
-
-	compare(t, expected, actual)
-}
-
 func TestLocalForward(t *testing.T) {
 	config := `Host google
   HostName google.se
@@ -270,6 +201,151 @@ Host face
 	compare(t, expected, actual)
 }
 
+func TestLocalForwardInvalid1(t *testing.T) {
+	config := `Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  LocalForward 2222 totalylegitserver 22`
+
+	var expected []*SSHHost
+
+	expectedErr := "Invalid forward: \"2222 totalylegitserver 22\""
+
+	actual, err := parse(config)
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestLocalForwardInvalid2(t *testing.T) {
+	config := `Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  LocalForward 9223372036854775808 totalylegitserver:22`
+
+	var expected []*SSHHost
+
+	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
+
+	actual, err := parse(config)
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestLocalForwardInvalid3(t *testing.T) {
+	config := `Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  LocalForward 2222 totalylegitserver:9223372036854775808`
+
+	var expected []*SSHHost
+
+	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
+
+	actual, err := parse(config)
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestRemoteForward(t *testing.T) {
+	config := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityOnly yes
+  IdentityFile ~/.ssh/company
+  RemoteForward 1337 duckduckgo.com:443
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  RemoteForward 2222 totalylegitserver:22
+  RemoteForward 0.0.0.0:666 instagram.com:1234`
+
+	expected := []*SSHHost{
+		{
+			Host:              []string{"google"},
+			HostName:          "google.se",
+			User:              "goog",
+			Port:              2222,
+			HostKeyAlgorithms: "ssh-dss",
+			ProxyCommand:      "ssh -q pluto nc saturn 22",
+			IdentityFile:      "~/.ssh/company",
+			RemoteForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+		},
+		{
+			Host:              []string{"face"},
+			User:              "mark",
+			Port:              22,
+			HostName:          "facebook.com",
+			HostKeyAlgorithms: "",
+			ProxyCommand:      "",
+			IdentityFile:      "",
+			RemoteForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  2222,
+					OutHost: "totalylegitserver",
+					OutPort: 22,
+				},
+				{
+					InHost:  "0.0.0.0",
+					InPort:  666,
+					OutHost: "instagram.com",
+					OutPort: 1234,
+				},
+			},
+		},
+	}
+	actual, err := parse(config)
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestRemoteForwardInvalid1(t *testing.T) {
+	config := `Host face
+	HostName facebook.com
+	User mark
+	Port 22
+	RemoteForward abc totalylegitserver:22`
+
+	var expected []*SSHHost
+
+	expectedErr := "Invalid forward: \"abc totalylegitserver:22\""
+
+	actual, err := parse(config)
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
 func TestDynamicForward(t *testing.T) {
 	config := `Host google
   HostName google.se
@@ -328,6 +404,44 @@ Host face
 	actual, err := parse(config)
 	if err != nil {
 		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestDynamicForward1(t *testing.T) {
+	config := `Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  DynamicForward abc`
+
+	var expected []*SSHHost
+
+	expectedErr := "Invalid dynamic forward: \"abc\""
+
+	actual, err := parse(config)
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
+	compare(t, expected, actual)
+}
+
+func TestDynamicForward2(t *testing.T) {
+	config := `Host face
+  HostName facebook.com
+  User mark
+  Port 22
+  DynamicForward 9223372036854775808`
+
+	var expected []*SSHHost
+
+	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
+
+	actual, err := parse(config)
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}
 
 	compare(t, expected, actual)
