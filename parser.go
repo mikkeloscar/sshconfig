@@ -35,6 +35,10 @@ func NewForward(f string) (Forward, error) {
 	r := regexp.MustCompile(`((\S+):)?(\d+)\s+(\S+):(\d+)`)
 	m := r.FindStringSubmatch(f)
 
+	if len(m) < 6 {
+		return Forward{}, fmt.Errorf("Invalid forward: %#v", f)
+	}
+
 	InPort, err := strconv.Atoi(m[3])
 	if err != nil {
 		return Forward{}, err
@@ -63,6 +67,10 @@ type DynamicForward struct {
 func NewDynamicForward(f string) (DynamicForward, error) {
 	r := regexp.MustCompile(`((\S+):)?(\d+)`)
 	m := r.FindStringSubmatch(f)
+
+	if len(m) < 4 {
+		return DynamicForward{}, fmt.Errorf("Invalid dynamic forward: %#v", f)
+	}
 
 	InPort, err := strconv.Atoi(m[3])
 	if err != nil {
@@ -161,9 +169,6 @@ Loop:
 			sshHost.IdentityFile = next.val
 		case itemLocalForward:
 			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
 			f, err := NewForward(next.val)
 			if err != nil {
 				return nil, err
@@ -171,9 +176,6 @@ Loop:
 			sshHost.LocalForwards = append(sshHost.LocalForwards, f)
 		case itemRemoteForward:
 			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
 			f, err := NewForward(next.val)
 			if err != nil {
 				return nil, err
@@ -181,9 +183,6 @@ Loop:
 			sshHost.RemoteForwards = append(sshHost.RemoteForwards, f)
 		case itemDynamicForward:
 			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
 			f, err := NewDynamicForward(next.val)
 			if err != nil {
 				return nil, err
