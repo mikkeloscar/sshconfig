@@ -48,6 +48,9 @@ const (
 	itemProxyCommand
 	itemHostKeyAlgorithms
 	itemIdentityFile
+	itemLocalForward
+	itemRemoteForward
+	itemDynamicForward
 )
 
 // variables
@@ -59,6 +62,9 @@ var variables = map[string]itemType{
 	"proxycommand":      itemProxyCommand,
 	"hostkeyalgorithms": itemHostKeyAlgorithms,
 	"identityfile":      itemIdentityFile,
+	"localforward":      itemLocalForward,
+	"remoteforward":     itemRemoteForward,
+	"dynamicforward":    itemDynamicForward,
 }
 
 const eof = -1

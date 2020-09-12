@@ -3,6 +3,7 @@ package sshconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -16,6 +17,70 @@ type SSHHost struct {
 	ProxyCommand      string
 	HostKeyAlgorithms string
 	IdentityFile      string
+	LocalForwards     []Forward
+	RemoteForwards    []Forward
+	DynamicForwards   []DynamicForward
+}
+
+// Forward defines a single port forward entry
+type Forward struct {
+	InHost  string
+	InPort  int
+	OutHost string
+	OutPort int
+}
+
+// NewForward returns Forward object parsed from LocalForward or RemoteForward string
+func NewForward(f string) (Forward, error) {
+	r := regexp.MustCompile(`((\S+):)?(\d+)\s+(\S+):(\d+)`)
+	m := r.FindStringSubmatch(f)
+
+	if len(m) < 6 {
+		return Forward{}, fmt.Errorf("Invalid forward: %#v", f)
+	}
+
+	InPort, err := strconv.Atoi(m[3])
+	if err != nil {
+		return Forward{}, err
+	}
+
+	OutPort, err := strconv.Atoi(m[5])
+	if err != nil {
+		return Forward{}, err
+	}
+
+	return Forward{
+		InHost:  m[2],
+		InPort:  InPort,
+		OutHost: m[4],
+		OutPort: OutPort,
+	}, nil
+}
+
+// DynamicForward defines a single dynamic port forward entry
+type DynamicForward struct {
+	Host string
+	Port int
+}
+
+// NewDynamicForward returns DForward object parsed from DynamicForward string
+func NewDynamicForward(f string) (DynamicForward, error) {
+	r := regexp.MustCompile(`((\S+):)?(\d+)`)
+	m := r.FindStringSubmatch(f)
+
+	if len(m) < 4 {
+		return DynamicForward{}, fmt.Errorf("Invalid dynamic forward: %#v", f)
+	}
+
+	InPort, err := strconv.Atoi(m[3])
+	if err != nil {
+		return DynamicForward{}, err
+	}
+
+	return DynamicForward{
+		Host: m[2],
+		Port: InPort,
+	}, nil
 }
 
 // MustParseSSHConfig must parse the SSH config given by path or it will panic
@@ -102,6 +167,27 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.IdentityFile = next.val
+		case itemLocalForward:
+			next = lexer.nextItem()
+			f, err := NewForward(next.val)
+			if err != nil {
+				return nil, err
+			}
+			sshHost.LocalForwards = append(sshHost.LocalForwards, f)
+		case itemRemoteForward:
+			next = lexer.nextItem()
+			f, err := NewForward(next.val)
+			if err != nil {
+				return nil, err
+			}
+			sshHost.RemoteForwards = append(sshHost.RemoteForwards, f)
+		case itemDynamicForward:
+			next = lexer.nextItem()
+			f, err := NewDynamicForward(next.val)
+			if err != nil {
+				return nil, err
+			}
+			sshHost.DynamicForwards = append(sshHost.DynamicForwards, f)
 		case itemError:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
