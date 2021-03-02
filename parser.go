@@ -2,6 +2,7 @@ package sshconfig
 
 import (
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"regexp"
 	"strconv"
@@ -96,6 +97,17 @@ func MustParseSSHConfig(path string) []*SSHHost {
 func ParseSSHConfig(path string) ([]*SSHHost, error) {
 	// read config file
 	content, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return parse(string(content))
+}
+
+// Parse parses a SSH config given by path contained in fsys.
+func Parse(fsys fs.FS, path string) ([]*SSHHost, error) {
+	// read config file
+	content, err := fs.ReadFile(fsys, path)
 	if err != nil {
 		return nil, err
 	}
