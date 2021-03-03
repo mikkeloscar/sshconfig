@@ -84,17 +84,29 @@ func NewDynamicForward(f string) (DynamicForward, error) {
 	}, nil
 }
 
-// MustParseSSHConfig must parse the SSH config given by path or it will panic
-func MustParseSSHConfig(path string) []*SSHHost {
-	config, err := ParseSSHConfig(path)
+// MustParse must parse the SSH config given by path or it will panic
+func MustParse(path string) []*SSHHost {
+	config, err := Parse(path)
 	if err != nil {
 		panic(err)
 	}
 	return config
 }
 
+// MustParseSSHConfig must parse the SSH config given by path or it will panic
+// Deprecated: Use MustParse instead.
+func MustParseSSHConfig(path string) []*SSHHost {
+	return MustParse(path)
+}
+
 // ParseSSHConfig parses a SSH config given by path.
+// Deprecated: Use Parse instead.
 func ParseSSHConfig(path string) ([]*SSHHost, error) {
+	return Parse(path)
+}
+
+// Parse parses a SSH config given by path.
+func Parse(path string) ([]*SSHHost, error) {
 	// read config file
 	content, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -104,8 +116,8 @@ func ParseSSHConfig(path string) ([]*SSHHost, error) {
 	return parse(string(content))
 }
 
-// Parse parses a SSH config given by path contained in fsys.
-func Parse(fsys fs.FS, path string) ([]*SSHHost, error) {
+// ParseFS parses a SSH config given by path contained in fsys.
+func ParseFS(fsys fs.FS, path string) ([]*SSHHost, error) {
 	// read config file
 	content, err := fs.ReadFile(fsys, path)
 	if err != nil {

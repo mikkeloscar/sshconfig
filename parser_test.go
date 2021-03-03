@@ -486,7 +486,7 @@ func TestParse(t *testing.T) {
 		},
 	}
 
-	actual, err := Parse(memfs, "config")
+	actual, err := ParseFS(memfs, "config")
 
 	var expected []*SSHHost
 
@@ -503,7 +503,7 @@ func TestParse(t *testing.T) {
 func TestParseNonExitentFile(t *testing.T) {
 	memfs := fstest.MapFS{}
 
-	_, err := Parse(memfs, "config")
+	_, err := ParseFS(memfs, "config")
 
 	expectedErr := "open config: file does not exist"
 
