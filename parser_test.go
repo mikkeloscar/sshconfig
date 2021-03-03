@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 // Test parsing
@@ -470,4 +471,48 @@ func toMap(t *testing.T, a *SSHHost) map[string]interface{} {
 	}
 
 	return aMap
+}
+
+func TestParse(t *testing.T) {
+	config := `Host face
+	HostName facebook.com
+	User mark
+	Port 22
+	DynamicForward 9223372036854775808`
+
+	memfs := fstest.MapFS{
+		"config": &fstest.MapFile{
+			Data: []byte(config),
+		},
+	}
+
+	actual, err := Parse(memfs, "config")
+
+	var expected []*SSHHost
+
+	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
+	compare(t, expected, actual)
+
+}
+
+func TestParseNonExitentFile(t *testing.T) {
+	memfs := fstest.MapFS{}
+
+	_, err := Parse(memfs, "config")
+
+	expectedErr := "open config: file does not exist"
+
+	if err == nil {
+		t.Errorf("Did not get expected error: %#v, got nil", expectedErr)
+	}
+
+	if err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+
 }
