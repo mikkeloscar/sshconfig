@@ -21,17 +21,17 @@ package main
 import (
     "fmt"
 
-    "github.com/mikkeloscar/sshconfig"
+    ssh "github.com/mikkeloscar/sshconfig"
 )
 
 func main() {
-    hosts, err := ParseSSHConfig("/path/to/ssh_config")
+    hosts, err := ssh.ParseSSHConfig("/path/to/ssh_config")
     if err != nil {
         fmt.Println(err)
     }
 
     for _, host := range hosts {
-       fmt.Printf("Hostname: %s", host.HostName)
+       fmt.Printf("Hostname: %s User: %s\n", host.HostName, host.User)
     }
 }
 ```
