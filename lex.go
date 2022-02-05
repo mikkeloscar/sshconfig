@@ -51,6 +51,7 @@ const (
 	itemLocalForward
 	itemRemoteForward
 	itemDynamicForward
+	itemInclude
 )
 
 // variables
@@ -65,6 +66,7 @@ var variables = map[string]itemType{
 	"localforward":      itemLocalForward,
 	"remoteforward":     itemRemoteForward,
 	"dynamicforward":    itemDynamicForward,
+	"include":           itemInclude,
 }
 
 const eof = -1
