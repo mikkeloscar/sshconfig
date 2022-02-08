@@ -225,17 +225,9 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 
-			includePath := next.val
-
-			if strings.HasPrefix(includePath, "~") {
-				expandedPath, err := homedir.Expand(includePath)
-				if err != nil {
-					return nil, err
-				}
-
-				includePath = expandedPath
-			} else if !strings.HasPrefix(includePath, "/") {
-				includePath = filepath.Join(filepath.Dir(path), next.val)
+			includePath, err := parseIncludePath(path, next.val)
+			if err != nil {
+				return nil, err
 			}
 
 			files, err := filepath.Glob(includePath)
@@ -263,4 +255,19 @@ Loop:
 		}
 	}
 	return sshConfigs, nil
+}
+
+func parseIncludePath(currentPath string, includePath string) (string, error) {
+	if strings.HasPrefix(includePath, "~") {
+		expandedPath, err := homedir.Expand(includePath)
+		if err != nil {
+			return "", err
+		}
+
+		return expandedPath, nil
+	} else if !strings.HasPrefix(includePath, "/") {
+		return filepath.Join(filepath.Dir(currentPath), includePath), nil
+	}
+
+	return includePath, nil
 }
