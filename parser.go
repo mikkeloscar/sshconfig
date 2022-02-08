@@ -235,6 +235,10 @@ Loop:
 				return nil, err
 			}
 
+			if len(files) == 0 {
+				return nil, fmt.Errorf("no files found for include path %s", includePath)
+			}
+
 			for _, f := range files {
 				includeSshConfigs, err := Parse(f)
 				if err != nil {
