@@ -2,12 +2,16 @@ package sshconfig
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 // Test parsing
@@ -26,7 +30,7 @@ Host face
   User mark
   Port 22`
 
-	_, err := parse(config)
+	_, err := parse(config, "~/.ssh/config")
 
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
@@ -46,7 +50,7 @@ Host face
   User mark
   Port 22`, "\n", "\r\n", -1)
 
-	_, err = parse(configCR)
+	_, err = parse(configCR, "~/.ssh/config")
 
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
@@ -55,7 +59,7 @@ Host face
 
 func TestTrailingComment(t *testing.T) {
 	config := "Host *\n#comment"
-	_, err := parse(config)
+	_, err := parse(config, "~/.ssh/config")
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
 	}
@@ -67,7 +71,7 @@ func TestMultipleHost(t *testing.T) {
   User goog
   Port 2222`
 
-	hosts, err := parse(config)
+	hosts, err := parse(config, "~/.ssh/config")
 
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
@@ -88,7 +92,7 @@ func TestTrailingSpace(t *testing.T) {
 Host googlespace 
     HostName google.com
 `
-	parse(config)
+	parse(config, "~/.ssh/config")
 }
 
 func TestIgnoreKeyword(t *testing.T) {
@@ -127,12 +131,139 @@ Host face
 			IdentityFile:      "",
 		},
 	}
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err != nil {
 		t.Errorf("unexpected error parsing config: %s", err.Error())
 	}
 
 	compare(t, expected, actual)
+}
+
+func TestIncludeRelative(t *testing.T) {
+	configA := `Include ./b.conf`
+	configB := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityFile ~/.ssh/company
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22`
+
+	tmpdir := t.TempDir()
+
+	f, err := os.Create(tmpdir + "/b.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(configB)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+
+	_, err = parse(configA, tmpdir+"/a.conf")
+	if err != nil {
+		t.Errorf("unable to parse config: %s", err.Error())
+	}
+}
+
+func TestIncludeHome(t *testing.T) {
+	configA := `Include ~/b.conf`
+	configB := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityFile ~/.ssh/company
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22`
+
+	tmpdir := t.TempDir()
+
+	homedir.DisableCache = true
+	homeEnv := "HOME"
+	if runtime.GOOS == "plan9" {
+		// On plan9, env vars are lowercase.
+		homeEnv = "home"
+	}
+	err := os.Setenv(homeEnv, tmpdir)
+	if err != nil {
+		t.Errorf("unable to set HOME env var: %s", err.Error())
+	}
+
+	f, err := os.Create(tmpdir + "/b.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(configB)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+
+	_, err = parse(configA, tmpdir+"/a.conf")
+	if err != nil {
+		t.Errorf("unable to parse config: %s", err.Error())
+	}
+}
+
+func TestIncludeRoot(t *testing.T) {
+	tmpdir := t.TempDir()
+
+	configA := fmt.Sprintf(`Include %s/b.conf`, tmpdir)
+	configB := `Host google
+  HostName google.se
+  User goog
+  Port 2222
+  ProxyCommand ssh -q pluto nc saturn 22
+  HostKeyAlgorithms ssh-dss
+  # comment
+  IdentityFile ~/.ssh/company
+
+Host face
+  HostName facebook.com
+  User mark
+  Port 22`
+
+	homedir.DisableCache = true
+	homeEnv := "HOME"
+	if runtime.GOOS == "plan9" {
+		// On plan9, env vars are lowercase.
+		homeEnv = "home"
+	}
+	err := os.Setenv(homeEnv, tmpdir)
+	if err != nil {
+		t.Errorf("unable to set HOME env var: %s", err.Error())
+	}
+
+	f, err := os.Create(tmpdir + "/b.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(configB)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+
+	_, err = parse(configA, tmpdir+"/a.conf")
+	if err != nil {
+		t.Errorf("unable to parse config: %s", err.Error())
+	}
 }
 
 func TestLocalForward(t *testing.T) {
@@ -196,7 +327,7 @@ Host face
 			},
 		},
 	}
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err != nil {
 		t.Errorf("unexpected error parsing config: %s", err.Error())
 	}
@@ -215,7 +346,7 @@ func TestLocalForwardInvalid1(t *testing.T) {
 
 	expectedErr := "Invalid forward: \"2222 totalylegitserver 22\""
 
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}
@@ -234,7 +365,7 @@ func TestLocalForwardInvalid2(t *testing.T) {
 
 	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
 
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}
@@ -253,7 +384,7 @@ func TestLocalForwardInvalid3(t *testing.T) {
 
 	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
 
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}
@@ -322,7 +453,7 @@ Host face
 			},
 		},
 	}
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err != nil {
 		t.Errorf("unexpected error parsing config: %s", err.Error())
 	}
@@ -341,7 +472,7 @@ func TestRemoteForwardInvalid1(t *testing.T) {
 
 	expectedErr := "Invalid forward: \"abc totalylegitserver:22\""
 
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}
@@ -404,7 +535,7 @@ Host face
 			},
 		},
 	}
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err != nil {
 		t.Errorf("unexpected error parsing config: %s", err.Error())
 	}
@@ -423,7 +554,7 @@ func TestDynamicForward1(t *testing.T) {
 
 	expectedErr := "Invalid dynamic forward: \"abc\""
 
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}
@@ -442,7 +573,7 @@ func TestDynamicForward2(t *testing.T) {
 
 	expectedErr := "strconv.Atoi: parsing \"9223372036854775808\": value out of range"
 
-	actual, err := parse(config)
+	actual, err := parse(config, "~/.ssh/config")
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
 	}

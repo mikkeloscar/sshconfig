@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 // SSHHost defines a single host entry in a ssh config
@@ -113,7 +116,7 @@ func Parse(path string) ([]*SSHHost, error) {
 		return nil, err
 	}
 
-	return parse(string(content))
+	return parse(string(content), path)
 }
 
 // ParseFS parses a SSH config given by path contained in fsys.
@@ -124,11 +127,11 @@ func ParseFS(fsys fs.FS, path string) ([]*SSHHost, error) {
 		return nil, err
 	}
 
-	return parse(string(content))
+	return parse(string(content), path)
 }
 
 // parses an openssh config file
-func parse(input string) ([]*SSHHost, error) {
+func parse(input string, path string) ([]*SSHHost, error) {
 	sshConfigs := []*SSHHost{}
 	var next item
 	var sshHost *SSHHost
@@ -138,8 +141,12 @@ Loop:
 	for {
 		token := lexer.nextItem()
 
-		if sshHost == nil && token.typ != itemHost {
-			return nil, fmt.Errorf("config variable before Host variable")
+		if sshHost == nil {
+			if token.typ != itemEOF && token.typ != itemHost && token.typ != itemInclude {
+				return nil, fmt.Errorf("%s:%d: config variable before Host variable", path, token.pos)
+			}
+		} else if token.typ == itemInclude {
+			return nil, fmt.Errorf("include not allowed in Host block")
 		}
 
 		switch token.typ {
@@ -212,6 +219,34 @@ Loop:
 				return nil, err
 			}
 			sshHost.DynamicForwards = append(sshHost.DynamicForwards, f)
+		case itemInclude:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+
+			includePath, err := parseIncludePath(path, next.val)
+			if err != nil {
+				return nil, err
+			}
+
+			files, err := filepath.Glob(includePath)
+			if err != nil {
+				return nil, err
+			}
+
+			if len(files) == 0 {
+				return nil, fmt.Errorf("no files found for include path %s", includePath)
+			}
+
+			for _, f := range files {
+				includeSshConfigs, err := Parse(f)
+				if err != nil {
+					return nil, err
+				}
+
+				sshConfigs = append(sshConfigs, includeSshConfigs...)
+			}
 		case itemError:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
@@ -224,4 +259,19 @@ Loop:
 		}
 	}
 	return sshConfigs, nil
+}
+
+func parseIncludePath(currentPath string, includePath string) (string, error) {
+	if strings.HasPrefix(includePath, "~") {
+		expandedPath, err := homedir.Expand(includePath)
+		if err != nil {
+			return "", err
+		}
+
+		return expandedPath, nil
+	} else if !strings.HasPrefix(includePath, "/") {
+		return filepath.Join(filepath.Dir(currentPath), includePath), nil
+	}
+
+	return includePath, nil
 }
