@@ -1,7 +1,6 @@
 # OpenSSH config parser for golang
 
-[![Build Status](https://travis-ci.org/mikkeloscar/sshconfig.svg?branch=master)](https://travis-ci.org/mikkeloscar/sshconfig)
-[![GoDoc](https://godoc.org/github.com/mikkeloscar/sshconfig?status.svg)](https://godoc.org/github.com/mikkeloscar/sshconfig)
+[![Go Reference](https://pkg.go.dev/badge/github.com/mikkeloscar/sshconfig.svg)](https://pkg.go.dev/github.com/mikkeloscar/sshconfig)
 [![Go Report Card](https://goreportcard.com/badge/github.com/mikkeloscar/sshconfig)](https://goreportcard.com/report/github.com/mikkeloscar/sshconfig)
 [![Coverage Status](https://coveralls.io/repos/github/mikkeloscar/sshconfig/badge.svg)](https://coveralls.io/github/mikkeloscar/sshconfig)
 
@@ -38,7 +37,7 @@ func main() {
 
 ## LICENSE
 
-Copyright (C) 2016  Mikkel Oscar Lyderik Larsen & Contributors
+Copyright (C) 2022  Mikkel Oscar Lyderik Larsen & Contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
