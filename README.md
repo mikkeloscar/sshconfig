@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-    hosts, err := ParseSSHConfig("/path/to/ssh_config")
+    hosts, err := sshconfig.Parse("/path/to/ssh_config")
     if err != nil {
         fmt.Println(err)
     }
