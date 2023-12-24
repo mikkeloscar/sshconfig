@@ -24,6 +24,8 @@ type SSHHost struct {
 	LocalForwards     []Forward
 	RemoteForwards    []Forward
 	DynamicForwards   []DynamicForward
+	Ciphers           []string
+	MACs              []string
 }
 
 // Forward defines a single port forward entry
@@ -247,6 +249,18 @@ Loop:
 
 				sshConfigs = append(sshConfigs, includeSshConfigs...)
 			}
+		case itemCiphers:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.Ciphers = strings.Split(next.val, ",")
+		case itemMACs:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.MACs = strings.Split(next.val, ",")
 		case itemError:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
