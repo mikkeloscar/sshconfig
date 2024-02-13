@@ -695,7 +695,7 @@ func TestParseFSNonExitentFile(t *testing.T) {
 func TestWildcardHost(t *testing.T) {
 	config := `Host *
   User mark
-  Port 22
+  Port 222
   Host empty
   HostName empty.com
   Host onlyport
@@ -706,7 +706,7 @@ func TestWildcardHost(t *testing.T) {
 		{
 			Host: []string{"empty"},
 			User: "mark",
-			Port: 22,
+			Port: 222,
 			HostName: "empty.com",
 		}, {
 			Host: []string{"onlyport"},
@@ -715,7 +715,7 @@ func TestWildcardHost(t *testing.T) {
 		}, {
 			Host: []string{"onlyuser"},
 			User: "onlyuser",
-			Port: 22,
+			Port: 222,
 		},
 	}
 	parsed, err := parse(config, "~/.ssh/config")

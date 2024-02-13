@@ -163,7 +163,7 @@ Loop:
 				}
 			}
 
-			sshHost = &SSHHost{Host: []string{}, Port: 22}
+			sshHost = &SSHHost{Host: []string{}, Port: 0}
 		case itemHostValue:
 			sshHost.Host = strings.Split(token.val, " ")
 		case itemHostName:
@@ -285,7 +285,17 @@ Loop:
 	if len(wildcardHosts) > 0 {
 		sshConfigs = applyWildcardRules(wildcardHosts, sshConfigs)
 	}
+	assertDefaultPort(sshConfigs)
 	return sshConfigs, nil
+}
+
+// Because the wildcard feature changed the hardcoded value to 0 in order to detect if there is port in config.
+func assertDefaultPort(hosts []*SSHHost) {
+	for _, host := range hosts {
+		if host.Port == 0 {
+			host.Port = 22
+		}
+	}
 }
 
 func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) []*SSHHost {
@@ -326,16 +336,51 @@ func containsWildcard(host *SSHHost) bool {
 	return false
 }
 
-func mergeSSHConfigs(source *SSHHost, target *SSHHost) {
+func setFieldByName(host *SSHHost, name string, value interface{}) {
+	v := reflect.ValueOf(host).Elem()
+	f := v.FieldByName(name)
+	strValue := fmt.Sprintf("%v", value)
+	currentValue := f.Interface()
 
-	//https://stackoverflow.com/a/50098755
-	sourceValue := reflect.ValueOf(source).Elem()
-	targetValue := reflect.ValueOf(target).Elem()
-	for i := 0; i < sourceValue.NumField(); i++ {
-		field := sourceValue.Field(i)
-		if field.Interface() != "" && targetValue.Field(i).Interface() == "" {
-			targetValue.Field(i).Set(field)
+	if currentValue != "" && currentValue != 0 {
+		return
+	}
+	if f.Kind() == reflect.Slice {
+		return
+	}
+	switch f.Kind() {
+	case reflect.String:
+		f.SetString(strValue)
+	case reflect.Int:
+		i, err := strconv.Atoi(strValue)
+		if err != nil {
+			panic(err)
 		}
+		f.SetInt(int64(i))
+	case reflect.Bool:
+		b, err := strconv.ParseBool(strValue)
+		if err != nil {
+			panic(err)
+		}
+		f.SetBool(b)
+	case reflect.Float64:
+		i, err := strconv.ParseFloat(strValue, 64)
+		if err != nil {
+			panic(err)
+		}
+		f.SetFloat(i)
+	}
+}
+
+func mergeSSHConfigs(source *SSHHost, target *SSHHost) {
+	sourceValue := reflect.ValueOf(source).Elem()
+	sourceFields := reflect.TypeOf(source).Elem()
+	for i := 0; i < sourceFields.NumField(); i++ {
+		value := sourceValue.Field(i)
+		if value == reflect.Zero(value.Type()) {
+			continue
+		}
+		setFieldByName(target, sourceFields.Field(i).Name, value)
 	}
 }
 
