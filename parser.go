@@ -137,7 +137,7 @@ func parse(input string, path string) ([]*SSHHost, error) {
 	sshConfigs := []*SSHHost{}
 	var next item
 	var sshHost *SSHHost
-	var onlyIncludes bool = !strings.Contains(input, "Host") && strings.Contains(input, "Include");
+	var onlyIncludes bool = !strings.Contains(input, "Host ") && strings.Contains(input, "Include ");
 
 	lexer := lex(input)
 Loop:
@@ -146,12 +146,12 @@ Loop:
 
 		if sshHost == nil {
 			if token.typ == itemEOF {
-				break
+				break Loop
 			}
 			if token.typ != itemHost && token.typ != itemInclude {
 				// File has no `Host` but has `Include`. Continue trying to parse it.
 				if  onlyIncludes {
-					continue
+					continue Loop
 				}
 				return nil, fmt.Errorf("%s:%d: config variable before Host variable", path, token.pos)
 			}
