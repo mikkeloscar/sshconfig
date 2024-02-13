@@ -137,7 +137,7 @@ func parse(input string, path string) ([]*SSHHost, error) {
 	sshConfigs := []*SSHHost{}
 	var next item
 	var sshHost *SSHHost
-	var onlyIncludes bool = !input.Contains("Host") && input.Contains("Include");
+	var onlyIncludes bool = !strings.Contains(input, "Host") && strings.Contains(input, "Include");
 
 	lexer := lex(input)
 Loop:
