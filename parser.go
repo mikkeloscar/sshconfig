@@ -295,28 +295,7 @@ func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) []*SSHH
 			if !matched {
 				break
 			}
-			//https://stackoverflow.com/a/50098755
-			wildcardHostPtr := reflect.ValueOf(wildcardHost)
-			reflectValue := reflect.Indirect(wildcardHostPtr)
-			numberOfFields := reflectValue.NumField()
-			for i := 0; i < numberOfFields; i++ {
-				fieldName := reflectValue.Type().Field(i).Name
-				fieldValue := reflectValue.Field(i).Interface()
-
-				if fieldName == "Host" {
-					continue
-				}
-				if fieldValue != "" {
-					if reflect.ValueOf(host).Elem().FieldByName(fieldName).String() != "" {
-						continue
-					}
-					if fieldName == "Port" {
-						reflect.ValueOf(host).Elem().FieldByName(fieldName).SetInt(int64(fieldValue.(int)))
-					} else {
-						reflect.ValueOf(host).Elem().FieldByName(fieldName).SetString(fieldValue.(string))
-					}
-				}
-			}
+			mergeSSHConfigs(wildcardHost, host)
 		}
 	}
 	return sshConfigs
@@ -345,6 +324,19 @@ func containsWildcard(host *SSHHost) bool {
 		}
 	}
 	return false
+}
+
+func mergeSSHConfigs(source *SSHHost, target *SSHHost) {
+
+	//https://stackoverflow.com/a/50098755
+	sourceValue := reflect.ValueOf(source).Elem()
+	targetValue := reflect.ValueOf(target).Elem()
+	for i := 0; i < sourceValue.NumField(); i++ {
+		field := sourceValue.Field(i)
+		if field.Interface() != "" && targetValue.Field(i).Interface() == "" {
+			targetValue.Field(i).Set(field)
+		}
+	}
 }
 
 func parseIncludePath(currentPath string, includePath string) (string, error) {
