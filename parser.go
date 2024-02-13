@@ -163,7 +163,7 @@ Loop:
 				}
 			}
 
-			sshHost = &SSHHost{Host: []string{}, Port: 0}
+			sshHost = &SSHHost{Host: []string{},}
 		case itemHostValue:
 			sshHost.Host = strings.Split(token.val, " ")
 		case itemHostName:
@@ -283,32 +283,36 @@ Loop:
 		}
 	}
 	if len(wildcardHosts) > 0 {
-		sshConfigs = applyWildcardRules(wildcardHosts, sshConfigs)
+		err := error(nil)
+		sshConfigs, err = applyWildcardRules(wildcardHosts, sshConfigs)
+		if err != nil {
+			return nil, err
+		}
 	}
-	assertDefaultPort(sshConfigs)
-	return sshConfigs, nil
-}
-
-// Because the wildcard feature changed the hardcoded value to 0 in order to detect if there is port in config.
-func assertDefaultPort(hosts []*SSHHost) {
-	for _, host := range hosts {
+	
+	for _, host := range sshConfigs {
 		if host.Port == 0 {
 			host.Port = 22
 		}
 	}
+
+	return sshConfigs, nil
 }
 
-func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) []*SSHHost {
+func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) ([]*SSHHost, error) {
 	for _, wildcardHost := range wildcardHosts {
 		for _, host := range sshConfigs {
 			matched := matchWildcardHost(wildcardHost, host)
 			if !matched {
 				break
 			}
-			mergeSSHConfigs(wildcardHost, host)
+			err := mergeSSHConfigs(wildcardHost, host)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	return sshConfigs
+	return sshConfigs, nil
 }
 
 func matchWildcardHost(wildcardHost *SSHHost, host *SSHHost) bool {
@@ -318,9 +322,8 @@ func matchWildcardHost(wildcardHost *SSHHost, host *SSHHost) bool {
 			matched, err := regexp.MatchString(regexpHost, hh)
 			if matched {
 				return true
-			}
-			if err != nil {
-				continue
+			} else if err != nil {
+				return false
 			}
 		}
 	}
@@ -336,17 +339,14 @@ func containsWildcard(host *SSHHost) bool {
 	return false
 }
 
-func setFieldByName(host *SSHHost, name string, value interface{}) {
+func setFieldByName(host *SSHHost, name string, value interface{}) error {
 	v := reflect.ValueOf(host).Elem()
 	f := v.FieldByName(name)
 	strValue := fmt.Sprintf("%v", value)
 	currentValue := f.Interface()
 
 	if currentValue != "" && currentValue != 0 {
-		return
-	}
-	if f.Kind() == reflect.Slice {
-		return
+		return nil
 	}
 	switch f.Kind() {
 	case reflect.String:
@@ -354,34 +354,27 @@ func setFieldByName(host *SSHHost, name string, value interface{}) {
 	case reflect.Int:
 		i, err := strconv.Atoi(strValue)
 		if err != nil {
-			panic(err)
+			return err
 		}
 		f.SetInt(int64(i))
-	case reflect.Bool:
-		b, err := strconv.ParseBool(strValue)
-		if err != nil {
-			panic(err)
-		}
-		f.SetBool(b)
-	case reflect.Float64:
-		i, err := strconv.ParseFloat(strValue, 64)
-		if err != nil {
-			panic(err)
-		}
-		f.SetFloat(i)
+	case reflect.Slice:
+	default:
+		// do nothing
 	}
+	return nil
 }
 
-func mergeSSHConfigs(source *SSHHost, target *SSHHost) {
+func mergeSSHConfigs(source *SSHHost, target *SSHHost) error {
 	sourceValue := reflect.ValueOf(source).Elem()
 	sourceFields := reflect.TypeOf(source).Elem()
 	for i := 0; i < sourceFields.NumField(); i++ {
 		value := sourceValue.Field(i)
-		if value == reflect.Zero(value.Type()) {
-			continue
+		err := setFieldByName(target, sourceFields.Field(i).Name, value)
+		if err != nil {
+			return fmt.Errorf("error setting value %v to field %s: %s", value, sourceFields.Field(i).Name, err)
 		}
-		setFieldByName(target, sourceFields.Field(i).Name, value)
 	}
+	return nil
 }
 
 func parseIncludePath(currentPath string, includePath string) (string, error) {

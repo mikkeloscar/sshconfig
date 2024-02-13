@@ -692,6 +692,16 @@ func TestParseFSNonExitentFile(t *testing.T) {
 
 }
 
+func TestLexError(t *testing.T) {
+	config := "Host face\nHostName facebook.comUser mark\rPort 22\nDynamicForward abc"
+	expectedErr := "expected \\n"
+	_, err := parse(config, "~/.ssh/config")
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+}
+
 func TestWildcardHost(t *testing.T) {
 	config := `Host *
   User mark
@@ -701,7 +711,11 @@ func TestWildcardHost(t *testing.T) {
   Host onlyport
   Port 2222
   Host onlyuser
-  User onlyuser`
+  User onlyuser
+  Host bothset
+  HostName bothset.com
+  Port 23
+  User bothset`
 	expected := []*SSHHost{
 		{
 			Host: []string{"empty"},
@@ -716,6 +730,11 @@ func TestWildcardHost(t *testing.T) {
 			Host: []string{"onlyuser"},
 			User: "onlyuser",
 			Port: 222,
+		}, {
+			Host: []string{"bothset"},
+			User: "bothset",
+			Port: 23,
+			HostName: "bothset.com",
 		},
 	}
 	parsed, err := parse(config, "~/.ssh/config")
@@ -725,5 +744,37 @@ func TestWildcardHost(t *testing.T) {
 	compare(t, expected, parsed)
 }
 
+func TestUnmatchedWildcard(t *testing.T) {
+	config := `Host special*
+  User special
+  Port 3333
+  Host special1
+  HostName special1.com
+  Host 2special
+  Port 2222
+  Host nothing
+  User nothing`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special1"},
+			User: "special",
+			Port: 3333,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"2special"},
+			User: "special",
+			Port: 2222,
+		}, {
+			Host: []string{"nothing"},
+			User: "nothing",
+			Port: 22,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
 
 	
