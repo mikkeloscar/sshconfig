@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"reflect"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -137,6 +138,7 @@ func parse(input string, path string) ([]*SSHHost, error) {
 	sshConfigs := []*SSHHost{}
 	var next item
 	var sshHost *SSHHost
+	var wildcardHosts []*SSHHost
 
 	lexer := lex(input)
 Loop:
@@ -154,7 +156,11 @@ Loop:
 		switch token.typ {
 		case itemHost:
 			if sshHost != nil {
-				sshConfigs = append(sshConfigs, sshHost)
+				if containsWildcard(sshHost) {
+					wildcardHosts = append(wildcardHosts, sshHost)
+				} else {
+					sshConfigs = append(sshConfigs, sshHost)
+				}
 			}
 
 			sshHost = &SSHHost{Host: []string{}, Port: 22}
@@ -265,14 +271,80 @@ Loop:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
 			if sshHost != nil {
-				sshConfigs = append(sshConfigs, sshHost)
+				if containsWildcard(sshHost) {
+					wildcardHosts = append(wildcardHosts, sshHost)
+				} else {
+					sshConfigs = append(sshConfigs, sshHost)
+				}
 			}
 			break Loop
 		default:
 			// continue onwards
 		}
 	}
+	if len(wildcardHosts) > 0 {
+		sshConfigs = applyWildcardRules(wildcardHosts, sshConfigs)
+	}
 	return sshConfigs, nil
+}
+
+func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) []*SSHHost {
+	for _, wildcardHost := range wildcardHosts {
+		for _, host := range sshConfigs {
+			matched := matchWildcardHost(wildcardHost, host)
+			if !matched {
+				break
+			}
+			//https://stackoverflow.com/a/50098755
+			wildcardHostPtr := reflect.ValueOf(wildcardHost)
+			reflectValue := reflect.Indirect(wildcardHostPtr)
+			numberOfFields := reflectValue.NumField()
+			for i := 0; i < numberOfFields; i++ {
+				fieldName := reflectValue.Type().Field(i).Name
+				fieldValue := reflectValue.Field(i).Interface()
+
+				if fieldName == "Host" {
+					continue
+				}
+				if fieldValue != "" {
+					if reflect.ValueOf(host).Elem().FieldByName(fieldName).String() != "" {
+						continue
+					}
+					if fieldName == "Port" {
+						reflect.ValueOf(host).Elem().FieldByName(fieldName).SetInt(int64(fieldValue.(int)))
+					} else {
+						reflect.ValueOf(host).Elem().FieldByName(fieldName).SetString(fieldValue.(string))
+					}
+				}
+			}
+		}
+	}
+	return sshConfigs
+}
+
+func matchWildcardHost(wildcardHost *SSHHost, host *SSHHost) bool {
+	for _, h := range wildcardHost.Host {
+		for _, hh := range host.Host {
+			regexpHost := strings.Replace(h, "*", ".*", -1)
+			matched, err := regexp.MatchString(regexpHost, hh)
+			if matched {
+				return true
+			}
+			if err != nil {
+				continue
+			}
+		}
+	}
+	return false
+}
+
+func containsWildcard(host *SSHHost) bool {
+	for _, h := range host.Host {
+		if strings.Contains(h, "*") {
+			return true
+		}
+	}
+	return false
 }
 
 func parseIncludePath(currentPath string, includePath string) (string, error) {

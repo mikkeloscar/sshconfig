@@ -691,3 +691,39 @@ func TestParseFSNonExitentFile(t *testing.T) {
 	}
 
 }
+
+func TestWildcardHost(t *testing.T) {
+	config := `Host *
+  User mark
+  Port 22
+  Host empty
+  HostName empty.com
+  Host onlyport
+  Port 2222
+  Host onlyuser
+  User onlyuser`
+	expected := []*SSHHost{
+		{
+			Host: []string{"empty"},
+			User: "mark",
+			Port: 22,
+			HostName: "empty.com",
+		}, {
+			Host: []string{"onlyport"},
+			User: "mark",
+			Port: 2222,
+		}, {
+			Host: []string{"onlyuser"},
+			User: "onlyuser",
+			Port: 22,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+
+	
