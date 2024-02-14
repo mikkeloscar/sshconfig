@@ -301,10 +301,11 @@ Loop:
 
 func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) ([]*SSHHost, error) {
 	for _, wildcardHost := range wildcardHosts {
+		HostLoop:
 		for _, host := range sshConfigs {
 			matched := matchWildcardHost(wildcardHost, host)
 			if !matched {
-				break
+				continue HostLoop
 			}
 			err := mergeSSHConfigs(wildcardHost, host)
 			if err != nil {
@@ -318,7 +319,7 @@ func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) ([]*SSH
 func matchWildcardHost(wildcardHost *SSHHost, host *SSHHost) bool {
 	for _, h := range wildcardHost.Host {
 		for _, hh := range host.Host {
-			regexpHost := strings.Replace(h, "*", ".*", -1)
+			regexpHost := "^" + strings.Replace(h, "*", ".*", -1) + "$"
 			matched, err := regexp.MatchString(regexpHost, hh)
 			if matched {
 				return true

@@ -744,7 +744,7 @@ func TestWildcardHost(t *testing.T) {
 	compare(t, expected, parsed)
 }
 
-func TestUnmatchedWildcard(t *testing.T) {
+func TestUnmatchedWildcardPost(t *testing.T) {
 	config := `Host special*
   User special
   Port 3333
@@ -753,7 +753,9 @@ func TestUnmatchedWildcard(t *testing.T) {
   Host 2special
   Port 2222
   Host nothing
-  User nothing`
+  User nothing
+  Host nothingspecial
+  User nothingspecial`
 	expected := []*SSHHost{
 		{
 			Host: []string{"special1"},
@@ -762,11 +764,15 @@ func TestUnmatchedWildcard(t *testing.T) {
 			HostName: "special1.com",
 		}, {
 			Host: []string{"2special"},
-			User: "special",
+			User: "",
 			Port: 2222,
 		}, {
 			Host: []string{"nothing"},
 			User: "nothing",
+			Port: 22,
+		}, {
+			Host: []string{"nothingspecial"},
+			User: "nothingspecial",
 			Port: 22,
 		},
 	}
@@ -777,4 +783,140 @@ func TestUnmatchedWildcard(t *testing.T) {
 	compare(t, expected, parsed)
 }
 
-	
+func TestUnmatchedWildcardPrefix(t *testing.T) {
+	config := `Host *special
+  User special
+  Port 3333
+  Host special1
+  HostName special1.com
+  User special1
+  Host 2special
+  Port 2222
+  Host nothing
+  User nothing
+  Host nothingspecial
+  User nothingspecial`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special1"},
+			User: "special1",
+			Port: 22,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"2special"},
+			User: "special",
+			Port: 2222,
+		}, {
+			Host: []string{"nothing"},
+			User: "nothing",
+			Port: 22,
+		}, {
+			Host: []string{"nothingspecial"},
+			User: "nothingspecial",
+			Port: 3333,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestUnmatchedWildcardBetween(t *testing.T) {
+	config := `Host part*special
+  User part33special
+  Port 3333
+  Host special
+  HostName special1.com
+  User special1
+  Host part
+  Port 2222
+  Host part_very_complex_special`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special1",
+			Port: 22,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"part"},
+			User: "",
+			Port: 2222,
+		}, {
+			Host: []string{"part_very_complex_special"},
+			User: "part33special",
+			Port: 3333,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestMultiWildcard(t *testing.T) {
+	config := `Host first*second*third
+  User first_second_third
+  Port 123
+  Host first
+  HostName first.com
+  User first
+  Host second
+  Port 222
+  Host third
+  User third
+  Host first_second
+  HostName first_second.com
+  Host second_third
+  User second_third
+  Host first_third
+  Port 333
+  Host first_second_third
+  HostName first_second_third.com
+  Host first_half_second_half_third`
+	expected := []*SSHHost{
+		{
+			Host: []string{"first"},
+			User: "first",
+			Port: 22,
+			HostName: "first.com",
+		}, {
+			Host: []string{"second"},
+			User: "",
+			Port: 222,
+		}, {
+			Host: []string{"third"},
+			User: "third",
+			Port: 22,
+		}, {
+			Host: []string{"first_second"},
+			User: "",
+			Port: 22,
+			HostName: "first_second.com",
+		}, {
+			Host: []string{"second_third"},
+			User: "second_third",
+			Port: 22,
+		}, {
+			Host: []string{"first_third"},
+			User: "",
+			Port: 333,
+		}, {
+			Host: []string{"first_second_third"},
+			User: "first_second_third",
+			Port: 123,
+			HostName: "first_second_third.com",
+		}, {
+			Host: []string{"first_half_second_half_third"},
+			User: "first_second_third",
+			Port: 123,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
