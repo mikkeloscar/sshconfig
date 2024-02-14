@@ -1,4 +1,4 @@
-module github.com/userwiths/sshconfig
+module github.com/mikkeloscar/sshconfig
 
 go 1.21
 
