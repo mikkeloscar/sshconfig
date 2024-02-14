@@ -920,3 +920,47 @@ func TestMultiWildcard(t *testing.T) {
 	}
 	compare(t, expected, parsed)
 }
+func TestHostlessFile(t *testing.T) {
+	config := `Include ./b.conf
+	Include ./a.conf
+	VisualHostKey yes`
+
+	configB := `Host google
+	  HostName google.se
+	  User goog
+	  Port 2222`
+	configA := `Host face
+	  HostName facebook.com
+	  User mark
+	  Port 22`
+
+	tmpdir := t.TempDir()
+
+	f, err := os.Create(tmpdir + "/b.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(configB)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+
+	f, err = os.Create(tmpdir + "/a.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(configA)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+
+	_, err = parse(config, tmpdir + "/config")
+
+	if err != nil {
+		t.Errorf("unable to parse config: %s", err.Error())
+	}
+}
