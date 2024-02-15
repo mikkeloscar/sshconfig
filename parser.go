@@ -376,9 +376,24 @@ func setFieldByName(host *SSHHost, name string, value interface{}) error {
 func mergeSSHConfigs(source *SSHHost, target *SSHHost) error {
 	sourceValue := reflect.ValueOf(source).Elem()
 	sourceFields := reflect.TypeOf(source).Elem()
+	var err error = nil
 	for i := 0; i < sourceFields.NumField(); i++ {
 		value := sourceValue.Field(i)
-		err := setFieldByName(target, sourceFields.Field(i).Name, value)
+		fieldName := sourceFields.Field(i).Name
+		switch fieldName {
+		case "LocalForwards":
+			target.LocalForwards = append(target.LocalForwards, source.LocalForwards...)
+		case "RemoteForwards":
+			target.RemoteForwards = append(target.RemoteForwards, source.RemoteForwards...)
+		case "DynamicForwards":
+			target.DynamicForwards = append(target.DynamicForwards, source.DynamicForwards...)
+		case "Ciphers":
+			target.Ciphers = append(target.Ciphers, source.Ciphers...)
+		case "MACs":
+			target.MACs = append(target.MACs, source.MACs...)
+		default:
+			err = setFieldByName(target, sourceFields.Field(i).Name, value)
+		}
 		if err != nil {
 			return fmt.Errorf("error setting value %v to field %s: %s", value, sourceFields.Field(i).Name, err)
 		}
