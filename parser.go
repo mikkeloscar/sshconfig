@@ -133,16 +133,16 @@ func ParseFS(fsys fs.FS, path string) ([]*SSHHost, error) {
 	return parse(string(content), path)
 }
 
-// parses an openssh config file
-func parse(input string, path string) ([]*SSHHost, error) {
-	sshConfigs := []*SSHHost{}
-	var next item
+// Can be used to get only virtual or non-virtual hosts.
+// Has uses no default values, they are handled in `parse` function.
+func extractHosts(input string, path string, onlyVirtual bool) ([]*SSHHost, error){
+	var returnHosts []*SSHHost
 	var sshHost *SSHHost
-	var wildcardHosts []*SSHHost
 	var onlyIncludes bool = !strings.Contains(input, "Host ") && strings.Contains(input, "Include ");
+	var next item
 
 	lexer := lex(input)
-Loop:
+	Loop:
 	for {
 		token := lexer.nextItem()
 
@@ -164,10 +164,10 @@ Loop:
 		switch token.typ {
 		case itemHost:
 			if sshHost != nil {
-				if containsWildcard(sshHost) {
-					wildcardHosts = append(wildcardHosts, sshHost)
-				} else {
-					sshConfigs = append(sshConfigs, sshHost)
+				if containsWildcard(sshHost) && onlyVirtual {
+					returnHosts = append(returnHosts, sshHost)
+				} else if !onlyVirtual && !containsWildcard(sshHost) {
+					returnHosts = append(returnHosts, sshHost)
 				}
 			}
 
@@ -256,12 +256,16 @@ Loop:
 			}
 
 			for _, f := range files {
-				includeSshConfigs, err := Parse(f)
+				fInput, err := ioutil.ReadFile(f)
+				if err != nil {
+					return nil, err
+				}
+				includeSshConfigs, err := extractHosts(string(fInput), f, onlyVirtual)
 				if err != nil {
 					return nil, err
 				}
 
-				sshConfigs = append(sshConfigs, includeSshConfigs...)
+				returnHosts = append(returnHosts, includeSshConfigs...)
 			}
 		case itemCiphers:
 			next = lexer.nextItem()
@@ -279,10 +283,10 @@ Loop:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
 			if sshHost != nil {
-				if containsWildcard(sshHost) {
-					wildcardHosts = append(wildcardHosts, sshHost)
-				} else {
-					sshConfigs = append(sshConfigs, sshHost)
+				if containsWildcard(sshHost) && onlyVirtual {
+					returnHosts = append(returnHosts, sshHost)
+				} else if !onlyVirtual && !containsWildcard(sshHost) {
+					returnHosts = append(returnHosts, sshHost)
 				}
 			}
 			break Loop
@@ -290,6 +294,20 @@ Loop:
 			// continue onwards
 		}
 	}
+	return returnHosts, nil
+}
+
+// parses an openssh config file
+func parse(input string, path string) ([]*SSHHost, error) {
+	sshConfigs, err := extractHosts(input, path, false)
+	if err != nil {
+		return nil, err
+	}
+	wildcardHosts, err := extractHosts(input, path, true)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(wildcardHosts) > 0 {
 		err := error(nil)
 		sshConfigs, err = applyWildcardRules(wildcardHosts, sshConfigs)
@@ -340,6 +358,9 @@ func matchWildcardHost(wildcardHost *SSHHost, host *SSHHost) bool {
 }
 
 func containsWildcard(host *SSHHost) bool {
+	if host == nil {
+		return false
+	}
 	for _, h := range host.Host {
 		if strings.Contains(h, "*") {
 			return true

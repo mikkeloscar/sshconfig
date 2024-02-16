@@ -1198,3 +1198,47 @@ func TestWildcardMacs(t *testing.T) {
 	}
 	compare(t, expected, parsed)
 }
+
+func TestWildcardInclude(t *testing.T) {
+	config := `Include ./b.conf
+	  Host special*
+	  User special
+	  Port 3333
+	  Host not-special
+	  HostName not-special.com
+	  `
+	configB := `Host special
+	  HostName special1.com
+	  Host not-*
+	  User not-special
+	  Port 4444`
+	tmpdir := t.TempDir()
+	f, err := os.Create(tmpdir + "/b.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+	_, err = f.WriteString(configB)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special",
+			Port: 3333,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"not-special"},
+			HostName: "not-special.com",
+			User: "not-special",
+			Port: 4444,
+		},
+	}
+
+	parsed, err := parse(config, tmpdir + "/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
