@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"reflect"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -132,15 +133,16 @@ func ParseFS(fsys fs.FS, path string) ([]*SSHHost, error) {
 	return parse(string(content), path)
 }
 
-// parses an openssh config file
-func parse(input string, path string) ([]*SSHHost, error) {
-	sshConfigs := []*SSHHost{}
-	var next item
+// Can be used to get only virtual or non-virtual hosts.
+// Has uses no default values, they are handled in `parse` function.
+func extractHosts(input string, path string, onlyVirtual bool) ([]*SSHHost, error){
+	var returnHosts []*SSHHost
 	var sshHost *SSHHost
 	var onlyIncludes bool = !strings.Contains(input, "Host ") && strings.Contains(input, "Include ");
+	var next item
 
 	lexer := lex(input)
-Loop:
+	Loop:
 	for {
 		token := lexer.nextItem()
 
@@ -162,10 +164,14 @@ Loop:
 		switch token.typ {
 		case itemHost:
 			if sshHost != nil {
-				sshConfigs = append(sshConfigs, sshHost)
+				if containsWildcard(sshHost) && onlyVirtual {
+					returnHosts = append(returnHosts, sshHost)
+				} else if !onlyVirtual && !containsWildcard(sshHost) {
+					returnHosts = append(returnHosts, sshHost)
+				}
 			}
 
-			sshHost = &SSHHost{Host: []string{}, Port: 22}
+			sshHost = &SSHHost{Host: []string{},}
 		case itemHostValue:
 			sshHost.Host = strings.Split(token.val, " ")
 		case itemHostName:
@@ -250,12 +256,16 @@ Loop:
 			}
 
 			for _, f := range files {
-				includeSshConfigs, err := Parse(f)
+				fInput, err := ioutil.ReadFile(f)
+				if err != nil {
+					return nil, err
+				}
+				includeSshConfigs, err := extractHosts(string(fInput), f, onlyVirtual)
 				if err != nil {
 					return nil, err
 				}
 
-				sshConfigs = append(sshConfigs, includeSshConfigs...)
+				returnHosts = append(returnHosts, includeSshConfigs...)
 			}
 		case itemCiphers:
 			next = lexer.nextItem()
@@ -273,14 +283,143 @@ Loop:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
 			if sshHost != nil {
-				sshConfigs = append(sshConfigs, sshHost)
+				if containsWildcard(sshHost) && onlyVirtual {
+					returnHosts = append(returnHosts, sshHost)
+				} else if !onlyVirtual && !containsWildcard(sshHost) {
+					returnHosts = append(returnHosts, sshHost)
+				}
 			}
 			break Loop
 		default:
 			// continue onwards
 		}
 	}
+	return returnHosts, nil
+}
+
+// parses an openssh config file
+func parse(input string, path string) ([]*SSHHost, error) {
+	sshConfigs, err := extractHosts(input, path, false)
+	if err != nil {
+		return nil, err
+	}
+	wildcardHosts, err := extractHosts(input, path, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(wildcardHosts) > 0 {
+		err := error(nil)
+		sshConfigs, err = applyWildcardRules(wildcardHosts, sshConfigs)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	for _, host := range sshConfigs {
+		if host.Port == 0 {
+			host.Port = 22
+		}
+	}
+
 	return sshConfigs, nil
+}
+
+func applyWildcardRules(wildcardHosts []*SSHHost, sshConfigs []*SSHHost) ([]*SSHHost, error) {
+	for _, wildcardHost := range wildcardHosts {
+		HostLoop:
+		for _, host := range sshConfigs {
+			matched := matchWildcardHost(wildcardHost, host)
+			if !matched {
+				continue HostLoop
+			}
+			err := mergeSSHConfigs(wildcardHost, host)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return sshConfigs, nil
+}
+
+func matchWildcardHost(wildcardHost *SSHHost, host *SSHHost) bool {
+	for _, h := range wildcardHost.Host {
+		for _, hh := range host.Host {
+			regexpHost := "^" + strings.Replace(h, "*", ".*", -1) + "$"
+			matched, err := regexp.MatchString(regexpHost, hh)
+			if matched {
+				return true
+			} else if err != nil {
+				return false
+			}
+		}
+	}
+	return false
+}
+
+func containsWildcard(host *SSHHost) bool {
+	if host == nil {
+		return false
+	}
+	for _, h := range host.Host {
+		if strings.Contains(h, "*") {
+			return true
+		}
+	}
+	return false
+}
+
+func setFieldByName(host *SSHHost, name string, value interface{}) error {
+	v := reflect.ValueOf(host).Elem()
+	f := v.FieldByName(name)
+	strValue := fmt.Sprintf("%v", value)
+	currentValue := f.Interface()
+
+	if currentValue != "" && currentValue != 0 {
+		return nil
+	}
+	switch f.Kind() {
+	case reflect.String:
+		f.SetString(strValue)
+	case reflect.Int:
+		i, err := strconv.Atoi(strValue)
+		if err != nil {
+			return err
+		}
+		f.SetInt(int64(i))
+	case reflect.Slice:
+	default:
+		// do nothing
+	}
+	return nil
+}
+
+func mergeSSHConfigs(source *SSHHost, target *SSHHost) error {
+	sourceValue := reflect.ValueOf(source).Elem()
+	sourceFields := reflect.TypeOf(source).Elem()
+	var err error = nil
+	for i := 0; i < sourceFields.NumField(); i++ {
+		value := sourceValue.Field(i)
+		fieldName := sourceFields.Field(i).Name
+		switch fieldName {
+		case "LocalForwards":
+			target.LocalForwards = append(target.LocalForwards, source.LocalForwards...)
+		case "RemoteForwards":
+			target.RemoteForwards = append(target.RemoteForwards, source.RemoteForwards...)
+		case "DynamicForwards":
+			target.DynamicForwards = append(target.DynamicForwards, source.DynamicForwards...)
+		case "Ciphers":
+			target.Ciphers = append(target.Ciphers, source.Ciphers...)
+		case "MACs":
+			target.MACs = append(target.MACs, source.MACs...)
+		default:
+			err = setFieldByName(target, sourceFields.Field(i).Name, value)
+		}
+		if err != nil {
+			return fmt.Errorf("error setting value %v to field %s: %s", value, sourceFields.Field(i).Name, err)
+		}
+	}
+	return nil
 }
 
 func parseIncludePath(currentPath string, includePath string) (string, error) {

@@ -692,6 +692,235 @@ func TestParseFSNonExitentFile(t *testing.T) {
 
 }
 
+func TestLexError(t *testing.T) {
+	config := "Host face\nHostName facebook.comUser mark\rPort 22\nDynamicForward abc"
+	expectedErr := "expected \\n"
+	_, err := parse(config, "~/.ssh/config")
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("Did not get expected error: %#v, got %#v", expectedErr, err.Error())
+	}
+}
+
+func TestWildcardHost(t *testing.T) {
+	config := `Host *
+  User mark
+  Port 222
+  Host empty
+  HostName empty.com
+  Host onlyport
+  Port 2222
+  Host onlyuser
+  User onlyuser
+  Host bothset
+  HostName bothset.com
+  Port 23
+  User bothset`
+	expected := []*SSHHost{
+		{
+			Host: []string{"empty"},
+			User: "mark",
+			Port: 222,
+			HostName: "empty.com",
+		}, {
+			Host: []string{"onlyport"},
+			User: "mark",
+			Port: 2222,
+		}, {
+			Host: []string{"onlyuser"},
+			User: "onlyuser",
+			Port: 222,
+		}, {
+			Host: []string{"bothset"},
+			User: "bothset",
+			Port: 23,
+			HostName: "bothset.com",
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestUnmatchedWildcardPost(t *testing.T) {
+	config := `Host special*
+  User special
+  Port 3333
+  Host special1
+  HostName special1.com
+  Host 2special
+  Port 2222
+  Host nothing
+  User nothing
+  Host nothingspecial
+  User nothingspecial`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special1"},
+			User: "special",
+			Port: 3333,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"2special"},
+			User: "",
+			Port: 2222,
+		}, {
+			Host: []string{"nothing"},
+			User: "nothing",
+			Port: 22,
+		}, {
+			Host: []string{"nothingspecial"},
+			User: "nothingspecial",
+			Port: 22,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestUnmatchedWildcardPrefix(t *testing.T) {
+	config := `Host *special
+  User special
+  Port 3333
+  Host special1
+  HostName special1.com
+  User special1
+  Host 2special
+  Port 2222
+  Host nothing
+  User nothing
+  Host nothingspecial
+  User nothingspecial`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special1"},
+			User: "special1",
+			Port: 22,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"2special"},
+			User: "special",
+			Port: 2222,
+		}, {
+			Host: []string{"nothing"},
+			User: "nothing",
+			Port: 22,
+		}, {
+			Host: []string{"nothingspecial"},
+			User: "nothingspecial",
+			Port: 3333,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestUnmatchedWildcardBetween(t *testing.T) {
+	config := `Host part*special
+  User part33special
+  Port 3333
+  Host special
+  HostName special1.com
+  User special1
+  Host part
+  Port 2222
+  Host part_very_complex_special`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special1",
+			Port: 22,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"part"},
+			User: "",
+			Port: 2222,
+		}, {
+			Host: []string{"part_very_complex_special"},
+			User: "part33special",
+			Port: 3333,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestMultiWildcard(t *testing.T) {
+	config := `Host first*second*third
+  User first_second_third
+  Port 123
+  Host first
+  HostName first.com
+  User first
+  Host second
+  Port 222
+  Host third
+  User third
+  Host first_second
+  HostName first_second.com
+  Host second_third
+  User second_third
+  Host first_third
+  Port 333
+  Host first_second_third
+  HostName first_second_third.com
+  Host first_half_second_half_third`
+	expected := []*SSHHost{
+		{
+			Host: []string{"first"},
+			User: "first",
+			Port: 22,
+			HostName: "first.com",
+		}, {
+			Host: []string{"second"},
+			User: "",
+			Port: 222,
+		}, {
+			Host: []string{"third"},
+			User: "third",
+			Port: 22,
+		}, {
+			Host: []string{"first_second"},
+			User: "",
+			Port: 22,
+			HostName: "first_second.com",
+		}, {
+			Host: []string{"second_third"},
+			User: "second_third",
+			Port: 22,
+		}, {
+			Host: []string{"first_third"},
+			User: "",
+			Port: 333,
+		}, {
+			Host: []string{"first_second_third"},
+			User: "first_second_third",
+			Port: 123,
+			HostName: "first_second_third.com",
+		}, {
+			Host: []string{"first_half_second_half_third"},
+			User: "first_second_third",
+			Port: 123,
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
 func TestHostlessFile(t *testing.T) {
 	config := `Include ./b.conf
 	Include ./a.conf
@@ -735,4 +964,281 @@ func TestHostlessFile(t *testing.T) {
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
 	}
+}
+
+func TestWildcardForwards(t *testing.T) {
+	config := `Host *special
+  User special
+  Port 3333
+  LocalForward 1337 duckduckgo.com:443
+  RemoteForward 1337 duckduckgo.com:443
+  DynamicForward 1337
+  Host special
+  HostName special1.com
+  User special1
+  Host 2special
+  LocalForward 1338 google.com:443
+  Port 2222
+  Host 3special
+  RemoteForward 1339 google.com:443
+  DynamicForward 1339
+  Host special4
+  User nothing
+  LocalForward 1340 yahoo.com:443
+  RemoteForward 1341 yahoo.com:443
+  DynamicForward 1342`
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special1",
+			Port: 3333,
+			HostName: "special1.com",
+			LocalForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+			RemoteForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+			DynamicForwards: []DynamicForward{
+				{
+					Host: "",
+					Port: 1337,
+				},
+			},
+		}, {
+			Host: []string{"2special"},
+			User: "special",
+			Port: 2222,
+			LocalForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1338,
+					OutHost: "google.com",
+					OutPort: 443,
+				}, {
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+			RemoteForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+			DynamicForwards: []DynamicForward{
+				{
+					Host: "",
+					Port: 1337,
+				},
+			},
+		}, {
+			Host: []string{"3special"},
+			User: "special",
+			Port: 3333,
+			LocalForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+			RemoteForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1339,
+					OutHost: "google.com",
+					OutPort: 443,
+				}, {
+					InHost:  "",
+					InPort:  1337,
+					OutHost: "duckduckgo.com",
+					OutPort: 443,
+				},
+			},
+			DynamicForwards: []DynamicForward{
+				{
+					Host: "",
+					Port: 1339,
+				}, {
+					Host: "",
+					Port: 1337,
+				},
+			},
+		}, {
+			Host: []string{"special4"},
+			User: "nothing",
+			Port: 22,
+			LocalForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1340,
+					OutHost: "yahoo.com",
+					OutPort: 443,
+				},
+			},
+			RemoteForwards: []Forward{
+				{
+					InHost:  "",
+					InPort:  1341,
+					OutHost: "yahoo.com",
+					OutPort: 443,
+				},
+			},
+			DynamicForwards: []DynamicForward{
+				{
+					Host: "",
+					Port: 1342,
+				},
+			},
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestWildcardCiphers(t *testing.T) {
+	config := `Host *special
+	  User special
+	  Port 3333
+	  Ciphers aes256-ctr,aes128-cbc
+	  Host special
+	  HostName special1.com
+	  User special1
+	  Host 2special
+	  Ciphers aes128-ctr
+	  Port 2222
+	  Host special3
+	  Ciphers aes256-ctr
+	  User not-special
+	  Port 4444`
+
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special1",
+			Port: 3333,
+			HostName: "special1.com",
+			Ciphers: []string{"aes256-ctr", "aes128-cbc"},
+		}, {
+			Host: []string{"2special"},
+			User: "special",
+			Port: 2222,
+			Ciphers: []string{"aes128-ctr", "aes256-ctr", "aes128-cbc"},
+		}, {
+			Host: []string{"special3"},
+			User: "not-special",
+			Port: 4444,
+			Ciphers: []string{"aes256-ctr"},
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestWildcardMacs(t *testing.T) {
+	config := `Host *special
+	  User special
+	  Port 3333
+	  MACs hmac-md5,hmac-sha2-256
+	  Host special
+	  HostName special1.com
+	  User special1
+	  Host 2special
+	  MACs hmac-sha2-512
+	  Port 2222
+	  Host special3
+	  MACs hmac-sha2-256
+	  User not-special
+	  Port 4444`
+
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special1",
+			Port: 3333,
+			HostName: "special1.com",
+			MACs: []string{"hmac-md5", "hmac-sha2-256"},
+		}, {
+			Host: []string{"2special"},
+			User: "special",
+			Port: 2222,
+			MACs: []string{"hmac-sha2-512", "hmac-md5", "hmac-sha2-256"},
+		}, {
+			Host: []string{"special3"},
+			User: "not-special",
+			Port: 4444,
+			MACs: []string{"hmac-sha2-256"},
+		},
+	}
+	parsed, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
+}
+
+func TestWildcardInclude(t *testing.T) {
+	config := `Include ./b.conf
+	  Host special*
+	  User special
+	  Port 3333
+	  Host not-special
+	  HostName not-special.com
+	  `
+	configB := `Host special
+	  HostName special1.com
+	  Host not-*
+	  User not-special
+	  Port 4444`
+	tmpdir := t.TempDir()
+	f, err := os.Create(tmpdir + "/b.conf")
+	if err != nil {
+		t.Errorf("unable to create file: %s", err.Error())
+	}
+	defer f.Close()
+	_, err = f.WriteString(configB)
+	if err != nil {
+		t.Errorf("unable to write to file: %s", err.Error())
+	}
+	expected := []*SSHHost{
+		{
+			Host: []string{"special"},
+			User: "special",
+			Port: 3333,
+			HostName: "special1.com",
+		}, {
+			Host: []string{"not-special"},
+			HostName: "not-special.com",
+			User: "not-special",
+			Port: 4444,
+		},
+	}
+
+	parsed, err := parse(config, tmpdir + "/config")
+	if err != nil {
+		t.Errorf("unexpected error parsing config: %s", err.Error())
+	}
+	compare(t, expected, parsed)
 }
