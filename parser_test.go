@@ -3,7 +3,6 @@ package sshconfig
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"reflect"
 	"runtime"
@@ -31,7 +30,8 @@ func TestParsing(t *testing.T) {
 Host face
   HostName facebook.com
   User mark
-  Port 22`
+  Port 22
+  ProxyJump google`
 
 	_, err := parse(config, "~/.ssh/config")
 
@@ -51,7 +51,8 @@ Host face
 Host face
   HostName facebook.com
   User mark
-  Port 22`, "\n", "\r\n", -1)
+  Port 22
+  ProxyJump google`, "\n", "\r\n", -1)
 
 	_, err = parse(configCR, "~/.ssh/config")
 
@@ -95,7 +96,10 @@ func TestTrailingSpace(t *testing.T) {
 Host googlespace 
     HostName google.com
 `
-	parse(config, "~/.ssh/config")
+	_, err := parse(config, "~/.ssh/config")
+	if err != nil {
+		t.Errorf("unable to parse config: %s", err.Error())
+	}
 }
 
 func TestIgnoreKeyword(t *testing.T) {
@@ -112,6 +116,7 @@ func TestIgnoreKeyword(t *testing.T) {
 Host face
   HostName facebook.com
   User mark
+  ProxyJump google,other
   Port 22
 
 Host other
@@ -139,6 +144,7 @@ Host other
 			HostName:          "facebook.com",
 			HostKeyAlgorithms: "",
 			ProxyCommand:      "",
+			ProxyJump:         []string{"google", "other"},
 			IdentityFile:      "",
 		},
 		{
@@ -632,7 +638,7 @@ func TestParse(t *testing.T) {
 	Port 22
 	DynamicForward 9223372036854775808`
 
-	ioutil.WriteFile("/tmp/example", []byte(config), os.FileMode(0644))
+	os.WriteFile("/tmp/example", []byte(config), os.FileMode(0644))
 
 	actual, err := Parse("/tmp/example")
 
@@ -730,7 +736,7 @@ func TestHostlessFile(t *testing.T) {
 		t.Errorf("unable to write to file: %s", err.Error())
 	}
 
-	_, err = parse(config, tmpdir + "/config")
+	_, err = parse(config, tmpdir+"/config")
 
 	if err != nil {
 		t.Errorf("unable to parse config: %s", err.Error())
