@@ -3,7 +3,7 @@ package sshconfig
 import (
 	"fmt"
 	"io/fs"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -19,6 +19,7 @@ type SSHHost struct {
 	User              string
 	Port              int
 	ProxyCommand      string
+	ProxyJump         []string
 	HostKeyAlgorithms string
 	IdentityFile      string
 	LocalForwards     []Forward
@@ -113,7 +114,7 @@ func ParseSSHConfig(path string) ([]*SSHHost, error) {
 // Parse parses a SSH config given by path.
 func Parse(path string) ([]*SSHHost, error) {
 	// read config file
-	content, err := ioutil.ReadFile(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +135,10 @@ func ParseFS(fsys fs.FS, path string) ([]*SSHHost, error) {
 
 // parses an openssh config file
 func parse(input string, path string) ([]*SSHHost, error) {
-	sshConfigs := []*SSHHost{}
+	var sshConfigs []*SSHHost
 	var next item
 	var sshHost *SSHHost
-	var onlyIncludes bool = !strings.Contains(input, "Host ") && strings.Contains(input, "Include ");
+	var onlyIncludes bool = !strings.Contains(input, "Host ") && strings.Contains(input, "Include ")
 
 	lexer := lex(input)
 Loop:
@@ -150,7 +151,7 @@ Loop:
 			}
 			if token.typ != itemHost && token.typ != itemInclude {
 				// File has no `Host` but has `Include`. Continue trying to parse it.
-				if  onlyIncludes {
+				if onlyIncludes {
 					continue Loop
 				}
 				return nil, fmt.Errorf("%s:%d: config variable before Host variable", path, token.pos)
@@ -196,6 +197,12 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.ProxyCommand = next.val
+		case itemProxyJumpHost:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.ProxyJump = strings.Split(next.val, ",")
 		case itemHostKeyAlgorithms:
 			next = lexer.nextItem()
 			if next.typ != itemValue {

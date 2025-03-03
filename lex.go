@@ -46,6 +46,7 @@ const (
 	itemUser
 	itemPort
 	itemProxyCommand
+	itemProxyJumpHost
 	itemHostKeyAlgorithms
 	itemIdentityFile
 	itemLocalForward
@@ -63,6 +64,7 @@ var variables = map[string]itemType{
 	"user":              itemUser,
 	"port":              itemPort,
 	"proxycommand":      itemProxyCommand,
+	"proxyjump":         itemProxyJumpHost,
 	"hostkeyalgorithms": itemHostKeyAlgorithms,
 	"identityfile":      itemIdentityFile,
 	"localforward":      itemLocalForward,
