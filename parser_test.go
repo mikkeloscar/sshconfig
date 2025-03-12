@@ -23,6 +23,7 @@ func TestParsing(t *testing.T) {
   HostKeyAlgorithms ssh-dss
   # comment
   IdentityFile ~/.ssh/company
+  IdentityAgent /dummy/agent.sock
   Ciphers aes256-ctr,aes128-cbc
   MACs hmac-md5,hmac-sha2-256
 
@@ -112,6 +113,7 @@ func TestIgnoreKeyword(t *testing.T) {
   # comment
   IdentityOnly yes
   IdentityFile ~/.ssh/company
+  IdentityAgent /dummy/agent.sock
 
 Host face
   HostName facebook.com
@@ -136,6 +138,7 @@ Host other
 			HostKeyAlgorithms: "ssh-dss",
 			ProxyCommand:      "ssh -q pluto nc saturn 22",
 			IdentityFile:      "~/.ssh/company",
+			IdentityAgent:     "/dummy/agent.sock",
 		},
 		{
 			Host:              []string{"face"},

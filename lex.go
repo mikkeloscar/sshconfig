@@ -49,6 +49,7 @@ const (
 	itemProxyJumpHost
 	itemHostKeyAlgorithms
 	itemIdentityFile
+	itemIdentityAgent
 	itemLocalForward
 	itemRemoteForward
 	itemDynamicForward
@@ -67,6 +68,7 @@ var variables = map[string]itemType{
 	"proxyjump":         itemProxyJumpHost,
 	"hostkeyalgorithms": itemHostKeyAlgorithms,
 	"identityfile":      itemIdentityFile,
+	"identityagent":     itemIdentityAgent,
 	"localforward":      itemLocalForward,
 	"remoteforward":     itemRemoteForward,
 	"dynamicforward":    itemDynamicForward,
