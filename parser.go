@@ -22,6 +22,7 @@ type SSHHost struct {
 	ProxyJump         []string
 	HostKeyAlgorithms string
 	IdentityFile      string
+	IdentityAgent     string
 	LocalForwards     []Forward
 	RemoteForwards    []Forward
 	DynamicForwards   []DynamicForward
@@ -215,6 +216,12 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.IdentityFile = next.val
+		case itemIdentityAgent:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.IdentityAgent = next.val
 		case itemLocalForward:
 			next = lexer.nextItem()
 			f, err := NewForward(next.val)
