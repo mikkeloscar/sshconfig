@@ -46,16 +46,14 @@ const (
 	itemUser
 	itemPort
 	itemProxyCommand
-	itemProxyJumpHost
 	itemHostKeyAlgorithms
 	itemIdentityFile
-	itemIdentityAgent
 	itemLocalForward
 	itemRemoteForward
 	itemDynamicForward
 	itemInclude
-	itemCiphers
-	itemMACs
+	itemDB
+	itemPass
 )
 
 // variables
@@ -64,17 +62,15 @@ var variables = map[string]itemType{
 	"hostname":          itemHostName,
 	"user":              itemUser,
 	"port":              itemPort,
+	"pass":              itemPass,
+	"db":                itemDB,
 	"proxycommand":      itemProxyCommand,
-	"proxyjump":         itemProxyJumpHost,
 	"hostkeyalgorithms": itemHostKeyAlgorithms,
 	"identityfile":      itemIdentityFile,
-	"identityagent":     itemIdentityAgent,
 	"localforward":      itemLocalForward,
 	"remoteforward":     itemRemoteForward,
 	"dynamicforward":    itemDynamicForward,
 	"include":           itemInclude,
-	"ciphers":           itemCiphers,
-	"macs":              itemMACs,
 }
 
 const eof = -1
