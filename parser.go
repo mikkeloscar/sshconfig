@@ -3,7 +3,7 @@ package sshconfig
 import (
 	"fmt"
 	"io/fs"
-	"os"
+	"io/ioutil"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -18,16 +18,14 @@ type SSHHost struct {
 	HostName          string
 	User              string
 	Port              int
+	Pass              string
+	DB                string
 	ProxyCommand      string
-	ProxyJump         []string
 	HostKeyAlgorithms string
 	IdentityFile      string
-	IdentityAgent     string
 	LocalForwards     []Forward
 	RemoteForwards    []Forward
 	DynamicForwards   []DynamicForward
-	Ciphers           []string
-	MACs              []string
 }
 
 // Forward defines a single port forward entry
@@ -115,7 +113,7 @@ func ParseSSHConfig(path string) ([]*SSHHost, error) {
 // Parse parses a SSH config given by path.
 func Parse(path string) ([]*SSHHost, error) {
 	// read config file
-	content, err := os.ReadFile(path)
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +134,9 @@ func ParseFS(fsys fs.FS, path string) ([]*SSHHost, error) {
 
 // parses an openssh config file
 func parse(input string, path string) ([]*SSHHost, error) {
-	var sshConfigs []*SSHHost
+	sshConfigs := []*SSHHost{}
 	var next item
 	var sshHost *SSHHost
-	var onlyIncludes bool = !strings.Contains(input, "Host ") && strings.Contains(input, "Include ")
 
 	lexer := lex(input)
 Loop:
@@ -147,14 +144,7 @@ Loop:
 		token := lexer.nextItem()
 
 		if sshHost == nil {
-			if token.typ == itemEOF {
-				break Loop
-			}
-			if token.typ != itemHost && token.typ != itemInclude {
-				// File has no `Host` but has `Include`. Continue trying to parse it.
-				if onlyIncludes {
-					continue Loop
-				}
+			if token.typ != itemEOF && token.typ != itemHost && token.typ != itemInclude {
 				return nil, fmt.Errorf("%s:%d: config variable before Host variable", path, token.pos)
 			}
 		} else if token.typ == itemInclude {
@@ -182,6 +172,18 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.User = next.val
+		case itemPass:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.Pass = next.val
+		case itemDB:
+			next = lexer.nextItem()
+			if next.typ != itemValue {
+				return nil, fmt.Errorf(next.val)
+			}
+			sshHost.DB = next.val
 		case itemPort:
 			next = lexer.nextItem()
 			if next.typ != itemValue {
@@ -198,12 +200,6 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.ProxyCommand = next.val
-		case itemProxyJumpHost:
-			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
-			sshHost.ProxyJump = strings.Split(next.val, ",")
 		case itemHostKeyAlgorithms:
 			next = lexer.nextItem()
 			if next.typ != itemValue {
@@ -216,12 +212,6 @@ Loop:
 				return nil, fmt.Errorf(next.val)
 			}
 			sshHost.IdentityFile = next.val
-		case itemIdentityAgent:
-			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
-			sshHost.IdentityAgent = next.val
 		case itemLocalForward:
 			next = lexer.nextItem()
 			f, err := NewForward(next.val)
@@ -271,18 +261,6 @@ Loop:
 
 				sshConfigs = append(sshConfigs, includeSshConfigs...)
 			}
-		case itemCiphers:
-			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
-			sshHost.Ciphers = strings.Split(next.val, ",")
-		case itemMACs:
-			next = lexer.nextItem()
-			if next.typ != itemValue {
-				return nil, fmt.Errorf(next.val)
-			}
-			sshHost.MACs = strings.Split(next.val, ",")
 		case itemError:
 			return nil, fmt.Errorf("%s at pos %d", token.val, token.pos)
 		case itemEOF:
