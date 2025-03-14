@@ -20,7 +20,7 @@ package main
 import (
     "fmt"
 
-    "github.com/mikkeloscar/sshconfig"
+    "github.com/DarkNio88/sshconfig"
 )
 
 func main() {
